@@ -88,7 +88,6 @@ impl From<BsonTypeName> for BsonTypeInfo {
 }
 
 pub mod simplified {
-
     use crate::{
         err::Result,
         json_schema::{self, BsonType, BsonTypeName, Items},
@@ -239,7 +238,7 @@ pub mod simplified {
                     }
                     // if there is an AnyOf that contains one item, we can simplify it
                     if any_of.len() == 1 {
-                        return Ok(Schema::try_from(any_of.into_iter().next().unwrap())?);
+                        return Schema::try_from(any_of.into_iter().next().unwrap());
                     }
                     Ok(Schema::AnyOf(
                         any_of
