@@ -1095,7 +1095,8 @@ pub mod i16_len {
         let (len, ret) = set_output_wstring_helper(&message, output_ptr, buffer_len);
         // Only copy the length if the pointer is not null
         if !text_length_ptr.is_null() {
-            *text_length_ptr = len as SmallInt;
+            // SQL-1168: Double size of buffer to account for encoding
+            *text_length_ptr = (len * 2) as SmallInt;
         }
         ret
     }
@@ -1118,7 +1119,8 @@ pub mod i16_len {
         // TODO SQL-1087: consider encoding utf-8 using the encoding crate. This allows for somewhat
         // sensible output for characters in unicode - ascii.:writes
         let (len, ret) = set_output_string_helper(message.as_bytes(), output_ptr, buffer_len);
-        *text_length_ptr = len as SmallInt;
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = (len * 2) as SmallInt;
         ret
     }
 
@@ -1169,7 +1171,8 @@ pub mod i32_len {
             output_ptr,
             buffer_len,
         );
-        *text_length_ptr = len as Integer;
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = (len * 2) as Integer;
         ret
     }
 
@@ -1190,7 +1193,8 @@ pub mod i32_len {
         text_length_ptr: *mut Integer,
     ) -> SqlReturn {
         let (len, ret) = set_output_string_helper(message.as_bytes(), output_ptr, buffer_len);
-        *text_length_ptr = len as Integer;
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = (len * 2) as Integer;
         ret
     }
 
@@ -1252,7 +1256,8 @@ pub mod isize_len {
         let (len, ret) =
             set_output_wstring_helper(message.get(index..).unwrap(), output_ptr, buffer_len);
         // the returned length should always be the total length of the data.
-        *text_length_ptr = (message.len() - index) as Len;
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = ((message.len() - index) * 2) as Len;
         stmt.insert_var_data_cache(col_num, CachedData::WChar(index + len, message));
         ret
     }
@@ -1288,7 +1293,8 @@ pub mod isize_len {
         let (len, ret) =
             set_output_string_helper(message.get(index..).unwrap(), output_ptr, buffer_len);
         // the returned length should always be the total length of the data.
-        *text_length_ptr = (message.len() - index) as Len;
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = ((message.len() - index) * 2) as Len;
         // The lenth parameter does not matter because character data uses 8bit words and
         // we can obtain it from message.chars().count() above.
         stmt.insert_var_data_cache(col_num, CachedData::Char(len + index, message));
@@ -1325,7 +1331,9 @@ pub mod isize_len {
         }
         let (len, ret) =
             set_output_binary_helper(data.get(index..).unwrap(), output_ptr, buffer_len);
-        *text_length_ptr = (data.len() - index) as Len;
+
+        // SQL-1168: Double size of buffer to account for encoding
+        *text_length_ptr = ((data.len() - index) * 2) as Len;
         stmt.insert_var_data_cache(col_num, CachedData::Bin(len + index, data));
         ret
     }
