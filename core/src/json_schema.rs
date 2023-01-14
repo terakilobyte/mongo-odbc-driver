@@ -93,6 +93,7 @@ pub mod simplified {
         json_schema::{self, BsonType, BsonTypeName, Items},
         BsonTypeInfo, Error,
     };
+    use file_dbg_macros::dbg_write;
     use std::collections::{BTreeMap, BTreeSet};
 
     // A simplified JSON Schema, relative to the json_schema::Schema struct.
@@ -240,6 +241,7 @@ pub mod simplified {
                     if any_of.len() == 1 {
                         return Schema::try_from(any_of.into_iter().next().unwrap());
                     }
+
                     Ok(Schema::AnyOf(
                         any_of
                             .into_iter()

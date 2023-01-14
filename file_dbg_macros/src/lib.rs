@@ -24,7 +24,7 @@ lazy_static! {
         match std::fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .append(true)
+        .append(false)
         .open(&*FILE_PATH) {
                     Err(why) => panic!("couldn't open log file {FILE_PATH:?}: {why}"),
                     Ok(file) => Mutex::new(file),

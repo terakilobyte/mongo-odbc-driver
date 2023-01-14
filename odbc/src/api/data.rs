@@ -113,6 +113,7 @@ impl IntoCData for Bson {
             Bson::Int64(i) => Ok(i.to_le_bytes().to_vec()),
             Bson::Binary(b) => Ok(b.bytes),
             Bson::Decimal128(d) => Ok(d.bytes().to_vec()),
+            Bson::ObjectId(o) => Ok(o.bytes().to_vec()),
             o => Err(ODBCError::RestrictedDataType(o.to_type_str(), BINARY)),
         }
     }

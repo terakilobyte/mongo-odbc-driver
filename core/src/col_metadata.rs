@@ -5,6 +5,7 @@ use crate::{
     },
     BsonTypeInfo, Error, Result,
 };
+use file_dbg_macros::dbg_write;
 use itertools::Itertools;
 use odbc_sys::{Nullability, SqlDataType};
 use serde::{Deserialize, Serialize};
@@ -130,6 +131,7 @@ impl SqlGetSchemaResponse {
     ) -> Result<Vec<MongoColMetadata>> {
         let result_set_schema: crate::json_schema::simplified::Schema =
             self.schema.json_schema.clone().try_into()?;
+        dbg_write!(dbg!(&result_set_schema));
         let result_set_object_schema = result_set_schema.assert_object_schema()?;
 
         result_set_object_schema

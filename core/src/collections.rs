@@ -87,18 +87,13 @@ impl MongoCollections {
     ) -> Self {
         let names = mongo_connection
             .client
-            .list_database_names(to_name_regex_doc(db_name_filter), None)
+            .list_database_names(None, None)
             .unwrap();
         let mut databases: Vec<CollectionsForDb> = Vec::with_capacity(names.len());
         for name in names {
             let list_coll_name_filter = to_name_regex_doc(collection_name_filter);
             let db = mongo_connection.client.database(name.as_str());
-            let collections = db
-                .list_collections(
-                    add_table_type_filter(table_type, list_coll_name_filter),
-                    None,
-                )
-                .unwrap();
+            let collections = db.list_collections(None, None).unwrap();
             databases.push(CollectionsForDb {
                 database_name: name,
                 collection_list: collections,

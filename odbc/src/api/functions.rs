@@ -431,6 +431,8 @@ pub unsafe extern "C" fn SQLColAttributeW(
                 let mongo_handle = MongoHandleRef::from(statement_handle);
                 let col_metadata = mongo_stmt.as_ref().unwrap().get_col_metadata(column_number);
                 if let Ok(col_metadata) = col_metadata {
+                    dbg_write!("SQLCOLATTRIBUTEW");
+                    dbg_write!(dbg!(&col_metadata));
                     return i16_len::set_output_wstring(
                         (*f)(col_metadata),
                         character_attribute_ptr as *mut WChar,
@@ -445,6 +447,8 @@ pub unsafe extern "C" fn SQLColAttributeW(
             let numeric_col_attr = |f: &dyn Fn(&MongoColMetadata) -> Len| {
                 {
                     let col_metadata = mongo_stmt.as_ref().unwrap().get_col_metadata(column_number);
+                    dbg_write!("SQLCOLATTRIBUTEW");
+                    dbg_write!(dbg!(&col_metadata));
                     if let Ok(col_metadata) = col_metadata {
                         *numeric_attribute_ptr = (*f)(col_metadata);
                         return SqlReturn::SUCCESS;
@@ -921,6 +925,8 @@ pub unsafe extern "C" fn SQLDescribeColW(
                     *col_size = col_metadata.display_size.unwrap_or(0) as usize;
                     *decimal_digits = col_metadata.scale.unwrap_or(0) as i16;
                     *nullable = col_metadata.nullability;
+                    dbg_write!("COL METADATA");
+                    dbg_write!(dbg!(&col_metadata, &col_name, &buffer_length, &name_length));
                     return i16_len::set_output_wstring(
                         &col_metadata.label,
                         col_name,
