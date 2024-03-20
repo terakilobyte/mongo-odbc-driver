@@ -1,7 +1,7 @@
 use crate::{handles::definitions::*, SQLCancel};
 use definitions::SqlReturn;
 use mongo_odbc_core::MongoConnection;
-use mongodb::sync::Client;
+use mongodb::Client;
 use std::env;
 
 mod integration {
@@ -121,12 +121,14 @@ mod integration {
 
     // checks that cancel gracefully handles the case where a query was executing when cancel is called,
     // but is no longer executing when killop is ultimately issued
-    #[test]
-    fn test_cancel_running_query_not_executing() {
+    #[tokio::test]
+    async fn test_cancel_running_query_not_executing() {
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn_handle = Connection::with_state(env, ConnectionState::Allocated);
         let mongo_connection = MongoConnection {
-            client: Client::with_uri_str(generate_connection_uri()).unwrap(),
+            client: Client::with_uri_str(generate_connection_uri())
+                .await
+                .unwrap(),
             operation_timeout: None,
             uuid_repr: None,
         };

@@ -8,7 +8,10 @@ use std::fmt::Debug;
 pub trait MongoStatement: Debug {
     // Move the cursor to the next item.
     // Return true if moving was successful, false otherwise.
-    fn next(&mut self, mongo_connection: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)>;
+    fn next(
+        &mut self,
+        mongo_connection: Option<&MongoConnection>,
+    ) -> impl std::future::Future<Output = Result<(bool, Vec<Error>)>> + Send;
     // Get the BSON value for the cell at the given colIndex on the current row.
     // Fails if the first row has not been retrieved (next must be called at least once before getValue).
     fn get_value(&self, col_index: u16) -> Result<Option<Bson>>;
@@ -25,12 +28,18 @@ pub trait MongoStatement: Debug {
     }
     // Executes a prepared statement.
     // Only MongoQuery supports this workflow. The other statements don't.
-    fn execute(&mut self, _: &MongoConnection, _: Bson) -> Result<bool> {
-        Err(Error::UnsupportedOperation("execute"))
+    fn execute(
+        &mut self,
+        _: &MongoConnection,
+        _: Bson,
+    ) -> impl std::future::Future<Output = Result<bool>> + Send {
+        async { Err(Error::UnsupportedOperation("execute")) }
     }
     // Closes the cursor.
     // Only MongoQuery supports this workflow. The other statements don't.
-    fn close_cursor(&mut self) {}
+    fn close_cursor(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        async {}
+    }
 }
 
 #[derive(Debug)]
@@ -39,7 +48,10 @@ pub struct EmptyStatement {
 }
 
 impl MongoStatement for EmptyStatement {
-    fn next(&mut self, _mongo_connection: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
+    async fn next(
+        &mut self,
+        _mongo_connection: Option<&MongoConnection>,
+    ) -> Result<(bool, Vec<Error>)> {
         Ok((false, vec![]))
     }
 
@@ -77,8 +89,8 @@ mod unit {
         )];
     }
 
-    #[test]
-    fn empty_statement_correctness() {
+    #[tokio::test]
+    async fn empty_statement_correctness() {
         let mut test_empty = EmptyStatement {
             resultset_metadata: &EMPTY_TEST_METADATA,
         };
@@ -87,7 +99,8 @@ mod unit {
             "TABLE_CAT",
             test_empty.get_col_metadata(1).unwrap().col_name
         );
-        assert!(!test_empty.next(None).unwrap().0);
+
+        assert!(!test_empty.next(None).await.unwrap().0);
         assert!(test_empty.get_value(1).is_err());
     }
 }

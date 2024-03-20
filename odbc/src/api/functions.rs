@@ -26,13 +26,13 @@ use function_name::named;
 use log::{debug, error, info};
 use logger::Logger;
 use mongo_odbc_core::{
-    odbc_uri::ODBCUri, MongoColMetadata, MongoCollections, MongoConnection, MongoDatabases,
-    MongoFields, MongoForeignKeys, MongoPrimaryKeys, MongoQuery, MongoStatement, MongoTableTypes,
-    MongoTypesInfo, TypeMode,
+    mock_query, odbc_uri::ODBCUri, EmptyStatement, MongoColMetadata, MongoCollections,
+    MongoConnection, MongoDatabases, MongoFields, MongoForeignKeys, MongoPrimaryKeys, MongoQuery,
+    MongoStatement, MongoTableTypes, MongoTypesInfo, TypeMode,
 };
 use num_traits::FromPrimitive;
-use std::ptr::null_mut;
 use std::{collections::HashMap, mem::size_of, panic, sync::mpsc};
+use std::{ptr::null_mut, sync::Arc};
 
 const NULL_HANDLE_ERROR: &str = "handle cannot be null";
 const HANDLE_MUST_BE_ENV_ERROR: &str = "handle must be env";
@@ -528,10 +528,10 @@ pub unsafe extern "C" fn SQLCancel(statement_handle: HStmt) -> SqlReturn {
                     let stmt_id = stmt.statement_id.read().unwrap().clone();
                     let conn = must_be_valid!((*stmt.connection).as_connection());
                     if let Some(mongo_connection) = conn.mongo_connection.read().unwrap().as_ref() {
-                        odbc_unwrap!(
-                            mongo_connection.cancel_queries_for_statement(stmt_id),
-                            MongoHandleRef::from(statement_handle)
-                        );
+                        let cancel = conn.runtime().block_on(async {
+                            mongo_connection.cancel_queries_for_statement(stmt_id).await
+                        });
+                        odbc_unwrap!(cancel, MongoHandleRef::from(statement_handle));
                         SqlReturn::SUCCESS
                     } else {
                         stmt.errors
@@ -818,20 +818,26 @@ pub unsafe extern "C" fn SQLColumnsW(
             };
             let connection = must_be_valid!((*stmt.connection).as_connection());
             let type_mode = *connection.type_mode.read().unwrap();
-            let mongo_statement = Box::new(MongoFields::list_columns(
-                connection
-                    .mongo_connection
-                    .read()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap(),
-                Some(stmt.attributes.read().unwrap().query_timeout as i32),
-                catalog,
-                table,
-                column,
-                type_mode,
-                odbc_3_data_types,
-            ));
+            let mongo_statement = connection.runtime().block_on(async {
+                Box::new(
+                    MongoFields::list_columns(
+                        connection
+                            .mongo_connection
+                            .read()
+                            .unwrap()
+                            .as_ref()
+                            .unwrap(),
+                        Some(stmt.attributes.read().unwrap().query_timeout as i32),
+                        catalog,
+                        table,
+                        column,
+                        type_mode,
+                        odbc_3_data_types,
+                    )
+                    .await
+                    .into(),
+                )
+            });
             *stmt.mongo_statement.write().unwrap() = Some(mongo_statement);
             SqlReturn::SUCCESS
         },
@@ -1005,16 +1011,19 @@ pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
         || {
             let conn_handle = MongoHandleRef::from(connection_handle);
             let conn = must_be_valid!((*conn_handle).as_connection());
-            // set the mongo_connection to None. This will cause the previous mongo_connection
-            // to drop and disconnect.
-            conn.mongo_connection
-                .write()
-                .unwrap()
-                .as_ref()
-                .unwrap()
-                .client
-                .clone()
-                .shutdown();
+            conn.runtime().block_on(async {
+                // set the mongo_connection to None. This will cause the previous mongo_connection
+                // to drop and disconnect.
+                conn.mongo_connection
+                    .write()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .client
+                    .clone()
+                    .shutdown()
+                    .await;
+            });
             *conn.mongo_connection.write().unwrap() = None;
             SqlReturn::SUCCESS
         },
@@ -1054,13 +1063,16 @@ fn sql_driver_connect(conn: &Connection, odbc_uri_string: &str) -> Result<MongoC
     // ODBCError has an impl From mongo_odbc_core::Error, but that does not
     // create an impl From Result<T, mongo_odbc_core::Error> to Result<T, ODBCError>
     // hence this bizarre Ok(func?) pattern.
-    Ok(mongo_odbc_core::MongoConnection::connect(
-        client_options,
-        database,
-        connection_timeout,
-        login_timeout,
-        *conn.type_mode.read().unwrap(),
-    )?)
+    Ok(conn.runtime().block_on(async {
+        mongo_odbc_core::MongoConnection::connect(
+            client_options,
+            database,
+            connection_timeout,
+            login_timeout,
+            *conn.type_mode.read().unwrap(),
+        )
+        .await
+    })?)
 }
 
 ///
@@ -1199,7 +1211,7 @@ pub unsafe extern "C" fn SQLExecDirectW(
                 mongo_handle
             );
 
-            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement));
+            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement.into()));
 
             // set the statment state to executing so SQLCancel knows to search the op log for hanging queries
             *stmt.state.write().unwrap() = StatementState::SynchronousQueryExecuting;
@@ -1243,15 +1255,19 @@ pub unsafe extern "C" fn SQLExecute(statement_handle: HStmt) -> SqlReturn {
 
 unsafe fn sql_execute(stmt: &Statement, connection: &Connection) -> Result<bool> {
     let stmt_id = stmt.statement_id.read().unwrap().clone();
+    let runtime = connection.runtime();
     let mongo_statement = {
         if let Some(mongo_connection) = connection.mongo_connection.read().unwrap().as_ref() {
-            stmt.mongo_statement
-                .write()
-                .unwrap()
-                .as_mut()
-                .unwrap()
-                .execute(mongo_connection, stmt_id)
-                .map_err(|e| e.into())
+            runtime.block_on(async {
+                stmt.mongo_statement
+                    .write()
+                    .unwrap()
+                    .as_mut()
+                    .unwrap()
+                    .execute(mongo_connection, stmt_id)
+                    .await
+                    .map_err(|e| e.into())
+            })
         } else {
             Err(ODBCError::InvalidCursorState)
         }
@@ -1281,12 +1297,15 @@ unsafe fn sql_fetch_helper(statement_handle: HStmt, function_name: &str) -> SqlR
     let stmt = must_be_valid!(mongo_handle.as_statement());
     let move_to_next_result = {
         let connection = must_be_valid!((*stmt.connection).as_connection());
-        match stmt.mongo_statement.write().unwrap().as_mut() {
-            Some(mongo_stmt) => mongo_stmt
-                .next(connection.mongo_connection.read().unwrap().as_ref())
-                .map_err(|e| e.into()),
-            None => Err(ODBCError::InvalidCursorState),
-        }
+        connection.runtime().block_on(async {
+            match stmt.mongo_statement.write().unwrap().as_mut() {
+                Some(mongo_stmt) => mongo_stmt
+                    .next(connection.mongo_connection.read().unwrap().as_ref())
+                    .await
+                    .map_err(|e| e.into()),
+                None => Err(ODBCError::InvalidCursorState),
+            }
+        })
     };
 
     if let Ok((has_next, warnings_opt)) = move_to_next_result {
@@ -1413,7 +1432,7 @@ pub unsafe extern "C" fn SQLForeignKeysW(
             let mongo_handle = MongoHandleRef::from(statement_handle);
             let stmt = must_be_valid!((*mongo_handle).as_statement());
             let mongo_statement = MongoForeignKeys::empty();
-            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement));
+            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement.into()));
             SqlReturn::SUCCESS
         },
         statement_handle
@@ -2119,13 +2138,14 @@ macro_rules! sql_get_info_helper {
                 InfoType::SQL_DBMS_VER => {
                     // Return the ADF version.
                     let conn = must_be_valid!((*conn_handle).as_connection());
-                    let version = conn
+                    let version = conn.runtime().block_on(async {conn
                         .mongo_connection
                         .read()
                         .unwrap()
                         .as_ref()
                         .unwrap()
-                        .get_adf_version();
+                        .get_adf_version().await
+                    });
                     match version {
                         Ok(version) => i16_len::set_output_wstring_as_bytes(
                             version.as_str(),
@@ -2899,7 +2919,7 @@ pub unsafe extern "C" fn SQLGetTypeInfoW(handle: HStmt, data_type: SmallInt) -> 
                         *connection.type_mode.read().unwrap()
                     };
                     let types_info = MongoTypesInfo::new(sql_data_type, type_mode);
-                    *stmt.mongo_statement.write().unwrap() = Some(Box::new(types_info));
+                    *stmt.mongo_statement.write().unwrap() = Some(Box::new(types_info.into()));
                     SqlReturn::SUCCESS
                 }
                 None => {
@@ -3032,12 +3052,12 @@ pub unsafe extern "C" fn SQLPrepareW(
             let mongo_handle = MongoHandleRef::from(statement_handle);
             let stmt = must_be_valid!(mongo_handle.as_statement());
             let connection = must_be_valid!((*stmt.connection).as_connection());
-            let mongo_statement = odbc_unwrap!(
-                sql_prepare(statement_text, text_length, connection,),
-                mongo_handle
-            );
+            let mongo_statement = connection
+                .runtime()
+                .block_on(async { sql_prepare(statement_text, text_length, connection) });
+            let mongo_statement = odbc_unwrap!(mongo_statement, mongo_handle);
 
-            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement));
+            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement.into()));
             SqlReturn::SUCCESS
         },
         statement_handle
@@ -3051,18 +3071,20 @@ fn sql_prepare(
 ) -> Result<MongoQuery> {
     let mut query = unsafe { input_text_to_string_w(statement_text, text_length as usize) };
     query = query.strip_suffix(';').unwrap_or(&query).to_string();
-    let mongo_statement = {
+    let runtime = connection.runtime();
+    let mongo_statement = runtime.block_on(async {
         let type_mode = *connection.type_mode.read().unwrap();
         let attributes = connection.attributes.read().unwrap();
         let timeout = attributes.connection_timeout;
         let current_db = attributes.current_catalog.as_ref().cloned();
         if let Some(mongo_connection) = connection.mongo_connection.read().unwrap().as_ref() {
             MongoQuery::prepare(mongo_connection, current_db, timeout, &query, type_mode)
+                .await
                 .map_err(|e| e.into())
         } else {
             Err(ODBCError::InvalidCursorState)
         }
-    };
+    });
     mongo_statement
 }
 
@@ -3091,7 +3113,7 @@ pub unsafe extern "C" fn SQLPrimaryKeysW(
             let mongo_handle = MongoHandleRef::from(statement_handle);
             let stmt = must_be_valid!((*mongo_handle).as_statement());
             let mongo_statement = MongoPrimaryKeys::empty();
-            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement));
+            *stmt.mongo_statement.write().unwrap() = Some(Box::new(mongo_statement.into()));
             SqlReturn::SUCCESS
         },
         statement_handle
@@ -3774,7 +3796,133 @@ pub unsafe extern "C" fn SQLTablePrivilegesW(
     unimpl!(statement_handle);
 }
 
+#[derive(Debug)]
+pub enum MongoStatementImplementer {
+    MongoQuery(MongoQuery),
+    MongoTypesInfo(MongoTypesInfo),
+    MongoPrimaryKeys(MongoPrimaryKeys),
+    MongoDatabases(MongoDatabases),
+    MongoCollections(MongoCollections),
+    MongoTableTypes(MongoTableTypes),
+    MongoEmptyStatement(EmptyStatement),
+    MongoField(MongoFields),
+    MockQuery(mock_query::MongoQuery),
+}
+
+impl From<mock_query::MongoQuery> for MongoStatementImplementer {
+    fn from(query: mock_query::MongoQuery) -> Self {
+        MongoStatementImplementer::MockQuery(query)
+    }
+}
+
+impl From<MongoQuery> for MongoStatementImplementer {
+    fn from(query: MongoQuery) -> Self {
+        MongoStatementImplementer::MongoQuery(query)
+    }
+}
+
+impl From<MongoTypesInfo> for MongoStatementImplementer {
+    fn from(types_info: MongoTypesInfo) -> Self {
+        MongoStatementImplementer::MongoTypesInfo(types_info)
+    }
+}
+
+impl From<MongoPrimaryKeys> for MongoStatementImplementer {
+    fn from(primary_keys: MongoPrimaryKeys) -> Self {
+        MongoStatementImplementer::MongoPrimaryKeys(primary_keys)
+    }
+}
+
+impl From<MongoDatabases> for MongoStatementImplementer {
+    fn from(databases: MongoDatabases) -> Self {
+        MongoStatementImplementer::MongoDatabases(databases)
+    }
+}
+
+impl From<MongoCollections> for MongoStatementImplementer {
+    fn from(collections: MongoCollections) -> Self {
+        MongoStatementImplementer::MongoCollections(collections)
+    }
+}
+
+impl From<MongoTableTypes> for MongoStatementImplementer {
+    fn from(table_types: MongoTableTypes) -> Self {
+        MongoStatementImplementer::MongoTableTypes(table_types)
+    }
+}
+
+impl From<EmptyStatement> for MongoStatementImplementer {
+    fn from(empty_statement: EmptyStatement) -> Self {
+        MongoStatementImplementer::MongoEmptyStatement(empty_statement)
+    }
+}
+
+impl From<MongoFields> for MongoStatementImplementer {
+    fn from(fields: MongoFields) -> Self {
+        MongoStatementImplementer::MongoField(fields)
+    }
+}
+
+impl MongoStatement for MongoStatementImplementer {
+    async fn next(
+        &mut self,
+        mongo_connection: Option<&MongoConnection>,
+    ) -> mongo_odbc_core::Result<(bool, Vec<mongo_odbc_core::Error>)> {
+        match self {
+            MongoStatementImplementer::MongoQuery(query) => query.next(mongo_connection).await,
+            MongoStatementImplementer::MongoTypesInfo(types_info) => {
+                types_info.next(mongo_connection).await
+            }
+            MongoStatementImplementer::MongoPrimaryKeys(_primary_keys) => Ok((false, vec![])),
+            MongoStatementImplementer::MongoDatabases(databases) => {
+                databases.next(mongo_connection).await
+            }
+            MongoStatementImplementer::MongoCollections(collections) => {
+                collections.next(mongo_connection).await
+            }
+            MongoStatementImplementer::MongoTableTypes(table_types) => {
+                table_types.next(mongo_connection).await
+            }
+            MongoStatementImplementer::MongoEmptyStatement(empty_statement) => {
+                empty_statement.next(mongo_connection).await
+            }
+            MongoStatementImplementer::MongoField(fields) => fields.next(mongo_connection).await,
+            MongoStatementImplementer::MockQuery(query) => query.next(mongo_connection).await,
+        }
+    }
+
+    fn get_value(&self, col_index: u16) -> mongo_odbc_core::Result<Option<Bson>> {
+        match self {
+            MongoStatementImplementer::MongoQuery(_) => todo!(),
+            MongoStatementImplementer::MongoTypesInfo(_) => todo!(),
+            MongoStatementImplementer::MongoPrimaryKeys(_) => todo!(),
+            MongoStatementImplementer::MongoDatabases(_) => todo!(),
+            MongoStatementImplementer::MongoCollections(_) => todo!(),
+            MongoStatementImplementer::MongoTableTypes(_) => todo!(),
+            MongoStatementImplementer::MongoEmptyStatement(_) => todo!(),
+            MongoStatementImplementer::MongoField(_) => todo!(),
+            MongoStatementImplementer::MockQuery(_) => todo!(),
+        }
+    }
+
+    fn get_resultset_metadata(&self) -> &Vec<MongoColMetadata> {
+        match self {
+            MongoStatementImplementer::MongoQuery(_) => todo!(),
+            MongoStatementImplementer::MongoTypesInfo(_) => todo!(),
+            MongoStatementImplementer::MongoPrimaryKeys(_) => todo!(),
+            MongoStatementImplementer::MongoDatabases(_) => todo!(),
+            MongoStatementImplementer::MongoCollections(_) => todo!(),
+            MongoStatementImplementer::MongoTableTypes(_) => todo!(),
+            MongoStatementImplementer::MongoEmptyStatement(_) => todo!(),
+            MongoStatementImplementer::MongoField(_) => todo!(),
+            MongoStatementImplementer::MockQuery(_) => todo!(),
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn sql_tables(
+    runtime: Arc<tokio::runtime::Runtime>,
     mongo_connection: &MongoConnection,
     query_timeout: i32,
     catalog: &str,
@@ -3782,23 +3930,32 @@ fn sql_tables(
     table: &str,
     table_t: &str,
     odbc_3_behavior: bool,
-) -> Result<Box<dyn MongoStatement>> {
-    match (catalog, schema, table, table_t) {
-        (SQL_ALL_CATALOGS, "", "", "") => Ok(Box::new(MongoDatabases::list_all_catalogs(
-            mongo_connection,
-            Some(query_timeout),
-        ))),
-        ("", SQL_ALL_SCHEMAS, "", "") => Ok(Box::new(MongoCollections::all_schemas())),
-        ("", "", "", SQL_ALL_TABLE_TYPES) => Ok(Box::new(MongoTableTypes::all_table_types())),
-        _ => Ok(Box::new(MongoCollections::list_tables(
-            mongo_connection,
-            Some(query_timeout),
-            catalog,
-            table,
-            table_t,
-            odbc_3_behavior,
-        ))),
-    }
+) -> Result<Box<MongoStatementImplementer>> {
+    runtime.block_on(async {
+        match (catalog, schema, table, table_t) {
+            (SQL_ALL_CATALOGS, "", "", "") => Ok(Box::new(
+                MongoDatabases::list_all_catalogs(mongo_connection, Some(query_timeout))
+                    .await
+                    .into(),
+            )),
+            ("", SQL_ALL_SCHEMAS, "", "") => Ok(Box::new(MongoCollections::all_schemas().into())),
+            ("", "", "", SQL_ALL_TABLE_TYPES) => {
+                Ok(Box::new(MongoTableTypes::all_table_types().into()))
+            }
+            _ => Ok(Box::new(
+                MongoCollections::list_tables(
+                    mongo_connection,
+                    Some(query_timeout),
+                    catalog,
+                    table,
+                    table_t,
+                    odbc_3_behavior,
+                )
+                .await
+                .into(),
+            )),
+        }
+    })
 }
 
 ///
@@ -3833,7 +3990,9 @@ pub unsafe extern "C" fn SQLTablesW(
             let table = input_text_to_string_w(table_name, name_length_3 as usize);
             let table_t = input_text_to_string_w(table_type, name_length_4 as usize);
             let connection = stmt.connection;
+            let runtime = (*connection).as_connection().unwrap().runtime();
             let mongo_statement = sql_tables(
+                runtime,
                 (*connection)
                     .as_connection()
                     .unwrap()

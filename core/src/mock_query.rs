@@ -26,7 +26,7 @@ impl MongoQuery {
 impl MongoStatement for MongoQuery {
     // Move the current index to the next Document in the Vec.
     // Return true if moving was successful, false otherwise.
-    fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
+    async fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
         if let Some(current) = self.current {
             self.current = Some(current + 1);
         } else {
@@ -57,7 +57,7 @@ impl MongoStatement for MongoQuery {
     }
 
     // Close the cursor by setting the current value and cursor to None.
-    fn close_cursor(&mut self) {
+    async fn close_cursor(&mut self) {
         self.current = None;
         self.resultset = vec![];
     }

@@ -196,7 +196,7 @@ impl MongoDatabases {
     // All columns except the TABLE_CAT column contain NULLs.
     // The query timeout comes from the statement attribute SQL_ATTR_QUERY_TIMEOUT. If there is a
     // timeout, the query must finish before the timeout or an error is returned.
-    pub fn list_all_catalogs(
+    pub async fn list_all_catalogs(
         mongo_connection: &MongoConnection,
         _query_timeout: Option<i32>,
     ) -> Self {
@@ -208,6 +208,7 @@ impl MongoDatabases {
                     .authorized_databases(true)
                     .build(),
             )
+            .await
             .unwrap()
             // MHOUSE-7119 - admin database and empty strings are showing in list_database_names
             .iter()
@@ -231,7 +232,7 @@ impl MongoDatabases {
 impl MongoStatement for MongoDatabases {
     // Increment current_db_index.
     // Return true if current_db_index index is <= for databases_names.length.
-    fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
+    async fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
         self.current_db_index += 1;
         Ok((self.current_db_index <= self.database_names.len(), vec![]))
     }

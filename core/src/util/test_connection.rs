@@ -26,24 +26,29 @@ pub unsafe extern "C" fn atlas_sql_test_connection(
     if let Ok(mut odbc_uri) = ODBCUri::new(conn_str) {
         match odbc_uri.try_into_client_options() {
             Ok(client_options) => {
-                match MongoConnection::connect(
-                    client_options,
-                    odbc_uri.get("database").map(|s| s.to_owned()),
-                    None,
-                    Some(30),
-                    TypeMode::Standard,
-                ) {
-                    Ok(_) => true,
-                    Err(e) => {
-                        let len = write_string_to_buffer(
-                            &e.to_string(),
-                            buffer_in_len,
-                            buffer as *mut WideChar,
-                        );
-                        *buffer_out_len = len;
-                        false
+                let runtime = tokio::runtime::Runtime::new().unwrap();
+                runtime.block_on(async {
+                    match MongoConnection::connect(
+                        client_options,
+                        odbc_uri.get("database").map(|s| s.to_owned()),
+                        None,
+                        Some(30),
+                        TypeMode::Standard,
+                    )
+                    .await
+                    {
+                        Ok(_) => true,
+                        Err(e) => {
+                            let len = write_string_to_buffer(
+                                &e.to_string(),
+                                buffer_in_len,
+                                buffer as *mut WideChar,
+                            );
+                            *buffer_out_len = len;
+                            false
+                        }
                     }
-                }
+                })
             }
             Err(e) => {
                 let len =

@@ -52,6 +52,8 @@ pub enum Error {
     UnsupportedOperation(&'static str),
     #[error("Statement not executed")]
     StatementNotExecuted,
+    #[error("Unable to create driver runtime: {0}")]
+    RuntimeCreationFailed(String),
 }
 
 impl Error {
@@ -74,6 +76,7 @@ impl Error {
             Error::ColIndexOutOfBounds(_) => INVALID_DESCRIPTOR_INDEX,
             Error::InvalidCursorState => INVALID_CURSOR_STATE,
             Error::CollectionDeserialization(_, _)
+            | Error::RuntimeCreationFailed(_)
             | Error::DatabaseVersionDeserialization(_)
             | Error::InvalidResultSetJsonSchema(_)
             | Error::MissingConnection(_)
@@ -109,6 +112,7 @@ impl Error {
                 }
             }
             Error::ColIndexOutOfBounds(_)
+            | Error::RuntimeCreationFailed(_)
             | Error::CollectionDeserialization(_, _)
             | Error::DatabaseVersionDeserialization(_)
             | Error::InvalidCursorState

@@ -2,7 +2,7 @@ use crate::odbc_uri::UserOptions;
 use crate::{err::Result, Error};
 use crate::{MongoQuery, TypeMode};
 use bson::{doc, Bson, UuidRepresentation};
-use mongodb::sync::Client;
+use mongodb::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -30,7 +30,7 @@ impl MongoConnection {
     /// and will take precedence over the database setting specified in the uri if any.
     /// The initial operation time if provided should come from and will take precedence over the
     /// setting specified in the uri if any.
-    pub fn connect(
+    pub async fn connect(
         mut user_options: UserOptions,
         current_db: Option<String>,
         operation_timeout: Option<u32>,
@@ -49,16 +49,16 @@ impl MongoConnection {
         };
         // Verify that the connection is working and the user has access to the default DB
         // ADF is supposed to check permissions on this
-        MongoQuery::prepare(&connection, current_db, None, "select 1", type_mode)?;
-
+        MongoQuery::prepare(&connection, current_db, None, "select 1", type_mode).await?;
         Ok(connection)
     }
 
     /// Gets the ADF version the client is connected to.
-    pub fn get_adf_version(&self) -> Result<String> {
+    pub async fn get_adf_version(&self) -> Result<String> {
         let db = self.client.database("admin");
         let cmd_res = db
             .run_command(doc! {"buildInfo": 1}, None)
+            .await
             .map_err(Error::DatabaseVersionRetreival)?;
         let build_info: BuildInfoResult =
             bson::from_document(cmd_res).map_err(Error::DatabaseVersionDeserialization)?;
@@ -66,7 +66,7 @@ impl MongoConnection {
     }
 
     /// cancels all queries for a given statement id
-    pub fn cancel_queries_for_statement(&self, statement_id: Bson) -> Result<bool> {
+    pub async fn cancel_queries_for_statement(&self, statement_id: Bson) -> Result<bool> {
         // use $currentOp and match the comment field to identify any queries issued by the current statement
         let current_ops_pipeline = vec![
             doc! {"$currentOp": {}},
@@ -75,10 +75,11 @@ impl MongoConnection {
         let admin_db = self.client.database("admin");
         let mut cursor = admin_db
             .aggregate(current_ops_pipeline, None)
+            .await
             .map_err(Error::QueryExecutionFailed)?;
 
         // iterate through the results and kill the operations
-        while cursor.advance().map_err(Error::QueryCursorUpdate)? {
+        while cursor.advance().await.map_err(Error::QueryCursorUpdate)? {
             let operation = cursor
                 .deserialize_current()
                 .map_err(Error::QueryCursorUpdate)?;
@@ -86,6 +87,7 @@ impl MongoConnection {
                 let killop_doc = doc! { "killOp": 1, "op": operation_id};
                 admin_db
                     .run_command(killop_doc, None)
+                    .await
                     .map_err(Error::QueryExecutionFailed)?;
             }
         }

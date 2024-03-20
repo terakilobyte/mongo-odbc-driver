@@ -1,6 +1,7 @@
 use crate::{handles::definitions::*, SQLFetch, SQLGetDiagFieldW, SQLGetTypeInfoW};
 use bson::Bson;
 use definitions::{AttrOdbcVersion, DiagType, HandleType::SQL_HANDLE_STMT, SqlDataType, SqlReturn};
+use mongo_odbc_core::MongoStatement;
 
 const INVALID_SQL_TYPE: &str = "HY004\0";
 

@@ -479,7 +479,7 @@ impl MongoFields {
     // (tables) names filters.
     // The query timeout comes from the statement attribute SQL_ATTR_QUERY_TIMEOUT. If there is a
     // timeout, the query must finish before the timeout or an error is returned.
-    pub fn list_columns(
+    pub async fn list_columns(
         mongo_connection: &MongoConnection,
         _query_timeout: Option<i32>,
         db_name: Option<&str>,
@@ -488,25 +488,26 @@ impl MongoFields {
         type_mode: TypeMode,
         odbc_3_types: bool,
     ) -> Self {
-        let dbs = db_name.map_or_else(
-            || {
-                mongo_connection
-                    .client
-                    .list_database_names(
-                        None,
-                        ListDatabasesOptions::builder()
-                            .authorized_databases(true)
-                            .build(),
-                    )
-                    .unwrap()
-                    // MHOUSE-7119 - admin database and empty strings are showing in list_database_names
-                    .iter()
-                    .filter(|&db_name| !db_name.is_empty() && !db_name.eq("admin"))
-                    .map(|s| s.to_string())
-                    .collect()
-            },
-            |db| vec![db.to_string()],
-        );
+        let dbs = if db_name.is_some() {
+            vec![db_name.unwrap().to_string()]
+        } else {
+            mongo_connection
+                .client
+                .list_database_names(
+                    None,
+                    ListDatabasesOptions::builder()
+                        .authorized_databases(true)
+                        .build(),
+                )
+                .await
+                .unwrap()
+                // MHOUSE-7119 - admin database and empty strings are showing in list_database_names
+                .iter()
+                .filter(|&db_name| !db_name.is_empty() && !db_name.eq("admin"))
+                .map(|s| s.to_string())
+                .collect()
+        };
+
         MongoFields {
             dbs: dbs.into(),
             current_db_name: "".to_string(),
@@ -534,7 +535,7 @@ impl MongoFields {
         }
     }
 
-    fn get_next_metadata(
+    async fn get_next_metadata(
         &mut self,
         mongo_connection: &MongoConnection,
     ) -> Result<(bool, Vec<Error>)> {
@@ -559,9 +560,10 @@ impl MongoFields {
 
                     let db = mongo_connection.client.database(&self.current_db_name);
                     let current_col_metadata_response: Result<SqlGetSchemaResponse> =
-                        bson::from_document(db.run_command(get_schema_cmd, None).unwrap()).map_err(
-                            |e| Error::CollectionDeserialization(collection_name.clone(), e),
-                        );
+                        bson::from_document(db.run_command(get_schema_cmd, None).await.unwrap())
+                            .map_err(|e| {
+                                Error::CollectionDeserialization(collection_name.clone(), e)
+                            });
                     if let Err(error) = current_col_metadata_response {
                         // If there is an Error while deserializing the schema, we won't show any columns for it
                         warnings.push(error);
@@ -599,7 +601,7 @@ impl MongoFields {
                     .run_command(
                     doc! { "listCollections": 1, "nameOnly": true, "authorizedCollections": true},
                     None,
-                ).unwrap().get_document("cursor").map(|doc| {
+                ).await.unwrap().get_document("cursor").map(|doc| {
                     doc.get_array("firstBatch").unwrap().iter().map(|val| {
                         let doc = val.as_document().unwrap();
                         let name = doc.get_str("name").unwrap().to_string();
@@ -623,14 +625,17 @@ impl MongoFields {
 impl MongoStatement for MongoFields {
     // Move the cursor to the next document and update the current row.
     // Return true if moving was successful, false otherwise.
-    fn next(&mut self, mongo_connection: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
+    async fn next(
+        &mut self,
+        mongo_connection: Option<&MongoConnection>,
+    ) -> Result<(bool, Vec<Error>)> {
         match self.field_name_filter.as_ref() {
             None => {
                 self.current_field_for_collection += 1;
                 match (self.current_field_for_collection as usize) < self.current_col_metadata.len()
                 {
                     true => Ok((true, vec![])),
-                    false => self.get_next_metadata(mongo_connection.unwrap()),
+                    false => self.get_next_metadata(mongo_connection.unwrap()).await,
                 }
             }
             Some(filter) => {
@@ -646,6 +651,7 @@ impl MongoStatement for MongoFields {
                         >= self.current_col_metadata.len())
                         && !self
                             .get_next_metadata(mongo_connection.unwrap())
+                            .await
                             .map(parse_warnings)
                             .unwrap()
                     {

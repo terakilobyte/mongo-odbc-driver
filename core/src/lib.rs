@@ -24,7 +24,7 @@ mod query;
 pub use query::MongoQuery;
 pub mod mock_query;
 mod stmt;
-pub use stmt::MongoStatement;
+pub use stmt::{EmptyStatement, MongoStatement};
 pub mod odbc_uri;
 mod primary_keys;
 mod type_info;

@@ -20,20 +20,20 @@ itertools = "0.10.4"
 lazy_static = "1.4.0"
 likely_stable = "0.1.2"
 num-traits = "0.2.14"
-num-derive = "0.3.3"
+num-derive = "0.4"
 chrono = "0.4.24"
 cstr = { path = "../cstr" }
-fancy-regex = "0.11.0"
+fancy-regex = "0.13.0"
 shared_sql_utils = { path = "../shared_sql_utils" }
 log = "0.4.14"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
 
 [dependencies.mongodb]
 version = "2"
-default-features = false
-features = ["tokio-sync"]
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.44.0", features = [
+windows = { version = "0.54.0", features = [
     "Win32_Foundation",
     "Win32_System_Search",
 ] }

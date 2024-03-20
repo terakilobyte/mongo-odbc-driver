@@ -3,7 +3,7 @@ use crate::{
     handles::definitions::{
         Connection, ConnectionState, Env, EnvState, MongoHandle, Statement, StatementState,
     },
-    map, set,
+    map, set, MongoStatementImplementer,
 };
 use bson::{
     doc, oid::ObjectId, spec::BinarySubtype, Binary, Bson, DateTime, JavaScriptCodeWithScope, Regex,
@@ -528,21 +528,24 @@ fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(MongoQuery::new(
-        vec![
-            doc! {"a": {"b": 42}},
-            doc! {"a": {"b": 43}},
-            doc! {"a": {"b": 44}},
-        ],
-        vec![MongoColMetadata::new(
-            "",
-            "a".to_string(),
-            "b".to_string(),
-            Schema::Atomic(Atomic::Scalar(BsonTypeName::Int)),
-            Nullability::SQL_NO_NULLS,
-            type_mode,
-        )],
-    )));
+    *stmt.mongo_statement.write().unwrap() = Some(Box::new(
+        MongoQuery::new(
+            vec![
+                doc! {"a": {"b": 42}},
+                doc! {"a": {"b": 43}},
+                doc! {"a": {"b": 44}},
+            ],
+            vec![MongoColMetadata::new(
+                "",
+                "a".to_string(),
+                "b".to_string(),
+                Schema::Atomic(Atomic::Scalar(BsonTypeName::Int)),
+                Nullability::SQL_NO_NULLS,
+                type_mode,
+            )],
+        )
+        .into(),
+    ));
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
         assert_eq!(SqlReturn::SUCCESS, SQLFetch(stmt_handle as *mut _,));
@@ -555,7 +558,7 @@ fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
     }
 }
 
-fn indicator_missing(mq: MongoQuery) {
+fn indicator_missing(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -567,7 +570,7 @@ fn indicator_missing(mq: MongoQuery) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq.into()));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -604,7 +607,7 @@ fn indicator_missing(mq: MongoQuery) {
     }
 }
 
-fn sql_get_wstring_data(mq: MongoQuery) {
+fn sql_get_wstring_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_w;
     use definitions::CDataType;
@@ -617,7 +620,7 @@ fn sql_get_wstring_data(mq: MongoQuery) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq.into()));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -702,7 +705,7 @@ fn sql_get_wstring_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_wstring_data_by_pieces(mq: MongoQuery) {
+fn sql_get_wstring_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_w;
     use definitions::CDataType;
@@ -787,7 +790,7 @@ fn sql_get_wstring_data_by_pieces(mq: MongoQuery) {
     }
 }
 
-fn sql_get_guid_data(mq: MongoQuery) {
+fn sql_get_guid_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -868,7 +871,7 @@ fn sql_get_guid_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_string_data_by_pieces(mq: MongoQuery) {
+fn sql_get_string_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_a;
     use definitions::CDataType;
@@ -922,7 +925,7 @@ fn sql_get_string_data_by_pieces(mq: MongoQuery) {
     }
 }
 
-fn sql_get_binary_data(mq: MongoQuery) {
+fn sql_get_binary_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1023,7 +1026,7 @@ fn sql_get_binary_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_binary_data_by_pieces(mq: MongoQuery) {
+fn sql_get_binary_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1100,7 +1103,7 @@ fn sql_get_binary_data_by_pieces(mq: MongoQuery) {
     }
 }
 
-fn sql_get_string_data(mq: MongoQuery) {
+fn sql_get_string_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_a;
     use definitions::CDataType;
@@ -1200,7 +1203,7 @@ fn sql_get_string_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_bit_data(mq: MongoQuery) {
+fn sql_get_bit_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1400,7 +1403,7 @@ fn sql_get_bit_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_i64_data(mq: MongoQuery) {
+fn sql_get_i64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1593,7 +1596,7 @@ fn sql_get_i64_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_u64_data(mq: MongoQuery) {
+fn sql_get_u64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1792,7 +1795,7 @@ fn sql_get_u64_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_i32_data(mq: MongoQuery) {
+fn sql_get_i32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1985,7 +1988,7 @@ fn sql_get_i32_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_u32_data(mq: MongoQuery) {
+fn sql_get_u32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2184,7 +2187,7 @@ fn sql_get_u32_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_f64_data(mq: MongoQuery) {
+fn sql_get_f64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2370,7 +2373,7 @@ fn sql_get_f64_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_f32_data(mq: MongoQuery) {
+fn sql_get_f32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2556,7 +2559,7 @@ fn sql_get_f32_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_datetime_data(mq: MongoQuery) {
+fn sql_get_datetime_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2767,7 +2770,7 @@ fn sql_get_datetime_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_date_data(mq: MongoQuery) {
+fn sql_get_date_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2971,7 +2974,7 @@ fn sql_get_date_data(mq: MongoQuery) {
     }
 }
 
-fn sql_get_time_data(mq: MongoQuery) {
+fn sql_get_time_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -3219,109 +3222,109 @@ mod unit_tests {
 
     #[test]
     fn indicator_missing_test() {
-        indicator_missing(STANDARD_BSON_TYPE_MQ.clone());
-        indicator_missing(SIMPLE_BSON_TYPE_MQ.clone());
+        indicator_missing(STANDARD_BSON_TYPE_MQ.clone().into());
+        indicator_missing(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_wstring_data_test() {
-        sql_get_wstring_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_wstring_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_wstring_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_wstring_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_wstring_data_by_pieces_test() {
-        sql_get_wstring_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_wstring_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_wstring_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_wstring_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_guid_data_test() {
-        sql_get_guid_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_guid_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_guid_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_guid_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_string_data_by_pieces_test() {
-        sql_get_string_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_string_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_string_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_string_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_binary_data_test() {
-        sql_get_binary_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_binary_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_binary_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_binary_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_binary_data_by_pieces_test() {
-        sql_get_binary_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_binary_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_binary_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_binary_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_string_data_test() {
-        sql_get_string_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_string_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_string_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_string_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_bit_data_test() {
-        sql_get_bit_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_bit_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_bit_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_bit_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_i64_data_test() {
-        sql_get_i64_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_i64_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_i64_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_i64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_u64_data_test() {
-        sql_get_u64_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_u64_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_u64_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_u64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_i32_data_test() {
-        sql_get_i32_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_i32_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_i32_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_i32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_u32_data_test() {
-        sql_get_u32_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_u32_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_u32_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_u32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_f64_data_test() {
-        sql_get_f64_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_f64_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_f64_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_f64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_f32_data_test() {
-        sql_get_f32_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_f32_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_f32_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_f32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_datetime_data_test() {
-        sql_get_datetime_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_datetime_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_datetime_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_datetime_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_date_data_test() {
-        sql_get_date_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_date_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_date_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_date_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 
     #[test]
     fn sql_get_time_data_test() {
-        sql_get_time_data(STANDARD_BSON_TYPE_MQ.clone());
-        sql_get_time_data(SIMPLE_BSON_TYPE_MQ.clone());
+        sql_get_time_data(STANDARD_BSON_TYPE_MQ.clone().into());
+        sql_get_time_data(SIMPLE_BSON_TYPE_MQ.clone().into());
     }
 }

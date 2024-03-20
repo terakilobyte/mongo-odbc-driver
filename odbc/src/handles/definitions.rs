@@ -1,4 +1,4 @@
-use crate::api::errors::ODBCError;
+use crate::{api::errors::ODBCError, MongoStatementImplementer};
 use bson::{Bson, Uuid};
 use cstr::{Charset, WideChar};
 use definitions::{
@@ -11,7 +11,7 @@ use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
     ptr::null_mut,
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 #[derive(Debug)]
@@ -262,6 +262,8 @@ pub struct Connection {
     // Pointer to the Env from which
     // this Connection was allocated
     pub env: *mut MongoHandle,
+    // the tokio runtime all async operations will run on
+    pub runtime: Arc<tokio::runtime::Runtime>,
     // mongo_connection is the actual connection to the mongo server
     // it will be None when the Connection is closed.
     pub mongo_connection: RwLock<Option<mongo_odbc_core::MongoConnection>>,
@@ -312,7 +314,12 @@ impl Connection {
             statements: RwLock::new(HashSet::new()),
             errors: RwLock::new(vec![]),
             type_mode: RwLock::new(TypeMode::Standard),
+            runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         }
+    }
+
+    pub fn runtime(&self) -> Arc<tokio::runtime::Runtime> {
+        self.runtime.clone()
     }
 }
 
@@ -328,7 +335,7 @@ pub enum CachedData {
 #[derive(Debug)]
 pub struct Statement {
     pub connection: *mut MongoHandle,
-    pub mongo_statement: RwLock<Option<Box<dyn mongo_odbc_core::MongoStatement>>>,
+    pub mongo_statement: RwLock<Option<Box<MongoStatementImplementer>>>,
     pub var_data_cache: RwLock<Option<HashMap<USmallInt, CachedData>>>,
     pub attributes: RwLock<StatementAttributes>,
     pub state: RwLock<StatementState>,

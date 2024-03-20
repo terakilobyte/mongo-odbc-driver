@@ -65,7 +65,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
 
@@ -198,7 +198,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
 
@@ -275,7 +275,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;
@@ -345,7 +345,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;
@@ -403,7 +403,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;

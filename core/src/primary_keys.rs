@@ -49,6 +49,7 @@ lazy_static! {
     ];
 }
 
+#[derive(Debug)]
 pub struct MongoPrimaryKeys {}
 
 impl MongoPrimaryKeys {
@@ -56,5 +57,13 @@ impl MongoPrimaryKeys {
         EmptyStatement {
             resultset_metadata: &PK_METADATA,
         }
+    }
+}
+
+impl Iterator for MongoPrimaryKeys {
+    type Item = EmptyStatement;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(MongoPrimaryKeys::empty())
     }
 }

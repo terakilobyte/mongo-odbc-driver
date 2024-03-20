@@ -95,7 +95,7 @@ impl MongoCollections {
     // (tables) names filters.
     // The query timeout comes from the statement attribute SQL_ATTR_QUERY_TIMEOUT. If there is a
     // timeout, the query must finish before the timeout or an error is returned.
-    pub fn list_tables(
+    pub async fn list_tables(
         mongo_connection: &MongoConnection,
         _query_timeout: Option<i32>,
         db_name_filter: &str,
@@ -103,43 +103,57 @@ impl MongoCollections {
         table_type: &str,
         accept_search_patterns: bool,
     ) -> Self {
-        let databases = mongo_connection
-            .client
-            .list_database_names(
-                None,
-                ListDatabasesOptions::builder()
-                    .authorized_databases(true)
-                    .build(),
-            )
-            .unwrap()
-            .iter()
-            // MHOUSE-7119 - admin database and empty strings are showing in list_database_names
-            .filter(|&db_name| !db_name.is_empty() && !db_name.eq("admin"))
-            .filter(|&db_name| is_match(db_name, db_name_filter, accept_search_patterns))
-            .map(|val| {
-                CollectionsForDb {
-                database_name: val.to_string(),
-                collection_list: mongo_connection.client.database(val.as_str()).run_command(
-                    doc! { "listCollections": 1, "nameOnly": true, "authorizedCollections": true},
+        let databases = futures::future::join_all(
+            mongo_connection
+                .client
+                .list_database_names(
                     None,
-                ).unwrap().get_document("cursor").map(|doc| {
-                    doc.get_array("firstBatch").unwrap().iter().map(|val| {
-                        let doc = val.as_document().unwrap();
-                        let name = doc.get_str("name").unwrap().to_string();
-                        let collection_type = match doc.get_str("type").unwrap() {
-                            "collection" => CollectionType::Collection,
-                            "view" => CollectionType::View,
-                            _ => CollectionType::Collection
-                        };
-                        MongoODBCCollectionSpecification::new(name, collection_type)
-                    }).collect()
-                }).unwrap_or_else(|_| {
-                    log::error!("Error getting collections for db {}", val);
-                    vec![]
-                }),
-            }
-            })
-            .collect();
+                    ListDatabasesOptions::builder()
+                        .authorized_databases(true)
+                        .build(),
+                )
+                .await
+                .unwrap()
+                .iter()
+                // MHOUSE-7119 - admin database and empty strings are showing in list_database_names
+                .filter(|&db_name| !db_name.is_empty() && !db_name.eq("admin"))
+                .filter(|&db_name| is_match(db_name, db_name_filter, accept_search_patterns))
+                .map(|val| async move {
+                    CollectionsForDb {
+                        database_name: val.to_string(),
+                        collection_list: mongo_connection
+                            .client
+                            .database(val.as_str())
+                            .run_command(
+                                doc! { "listCollections": 1, "nameOnly": true, "authorizedCollections": true },
+                                None,
+                            )
+                            .await
+                            .unwrap()
+                            .get_document("cursor")
+                            .map(|doc| {
+                                doc.get_array("firstBatch")
+                                    .unwrap()
+                                    .iter()
+                                    .map(|val| {
+                                        let doc = val.as_document().unwrap();
+                                        let name = doc.get_str("name").unwrap().to_string();
+                                        let collection_type = match doc.get_str("type").unwrap() {
+                                            "collection" => CollectionType::Collection,
+                                            "view" => CollectionType::View,
+                                            _ => CollectionType::Collection,
+                                        };
+                                        MongoODBCCollectionSpecification::new(name, collection_type)
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_else(|_| {
+                                log::error!("Error getting collections for db {}", val);
+                                vec![]
+                            }),
+                    }
+                }).collect::<Vec<_>>()
+        ).await;
 
         MongoCollections {
             current_collection: None,
@@ -175,7 +189,7 @@ impl MongoStatement for MongoCollections {
     // When cursor is exhausted move to next database in list
     // Return true if moving was successful, false otherwise.
     #[allow(clippy::blocks_in_conditions)]
-    fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
+    async fn next(&mut self, _: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
         if self.current_database_index.is_none() {
             if self.collections_for_db_list.is_empty() {
                 return Ok((false, vec![]));

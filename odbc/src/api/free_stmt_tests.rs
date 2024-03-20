@@ -74,8 +74,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_free_stmt_close() {
+    #[tokio::test]
+    async fn test_free_stmt_close() {
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
             &mut MongoHandle::Connection(Connection::with_state(env, ConnectionState::Allocated));
@@ -103,7 +103,7 @@ mod unit {
 
             // Set the mongo_statement
             let s = (*stmt).as_statement().unwrap();
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
 
             assert_eq!(
                 SqlReturn::SUCCESS,
@@ -131,6 +131,7 @@ mod unit {
                 .as_mut()
                 .unwrap()
                 .next(None)
+                .await
             {
                 // we expect false since there should be no data to iterate after SQLFreeStmt
                 Ok((false, _)) => {}
@@ -151,7 +152,7 @@ mod unit {
             // Using a MongoCollections mongo_statement means there is no additional data
             // to set or test.
             let s = (*stmt).as_statement().unwrap();
-            *s.mongo_statement.write().unwrap() = Some(Box::new(MongoCollections::empty()));
+            *s.mongo_statement.write().unwrap() = Some(Box::new(MongoCollections::empty().into()));
 
             assert_eq!(
                 SqlReturn::SUCCESS,
