@@ -11,8 +11,9 @@ use std::{
     borrow::BorrowMut,
     collections::{HashMap, HashSet},
     ptr::null_mut,
-    sync::{Arc, RwLock},
+    sync::RwLock,
 };
+use tokio::sync::{self};
 
 #[derive(Debug)]
 pub enum MongoHandle {
@@ -24,6 +25,13 @@ pub enum MongoHandle {
 
 impl MongoHandle {
     pub fn as_env(&self) -> Option<&Env> {
+        match self {
+            MongoHandle::Env(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn as_mut_env(&mut self) -> Option<&mut Env> {
         match self {
             MongoHandle::Env(e) => Some(e),
             _ => None,
@@ -51,6 +59,15 @@ impl MongoHandle {
         }
     }
 
+    pub fn runtime(&self) -> &tokio::runtime::Handle {
+        match self {
+            MongoHandle::Env(e) => e.runtime.handle(),
+            MongoHandle::Connection(c) => c.runtime(),
+            MongoHandle::Statement(s) => s.runtime(),
+            _ => panic!("Descriptor does not have a runtime"),
+        }
+    }
+
     /// Returns a reference to the statement's connection, if there is
     /// one.
     pub fn as_statement_connection(&self) -> Option<&Connection> {
@@ -69,7 +86,9 @@ impl MongoHandle {
                 e.errors.write().unwrap().push(error);
             }
             MongoHandle::Connection(c) => {
-                c.errors.write().unwrap().push(error);
+                c.runtime().block_on(async {
+                    c.errors.write().await.push(error);
+                });
             }
             MongoHandle::Statement(s) => {
                 s.errors.write().unwrap().push(error);
@@ -86,7 +105,9 @@ impl MongoHandle {
                 e.errors.write().unwrap().clear();
             }
             MongoHandle::Connection(c) => {
-                c.errors.write().unwrap().clear();
+                c.runtime().block_on(async {
+                    c.errors.write().await.clear();
+                });
             }
             MongoHandle::Statement(s) => {
                 s.errors.write().unwrap().clear();
@@ -216,6 +237,9 @@ pub struct Env {
     pub state: RwLock<EnvState>,
     pub connections: RwLock<HashSet<*mut MongoHandle>>,
     pub errors: RwLock<Vec<ODBCError>>,
+
+    /// The tokio runtime all async operations will run on
+    pub runtime: tokio::runtime::Runtime,
 }
 
 impl Env {
@@ -225,7 +249,12 @@ impl Env {
             state: RwLock::new(state),
             connections: RwLock::new(HashSet::new()),
             errors: RwLock::new(vec![]),
+            runtime: tokio::runtime::Runtime::new().unwrap(),
         }
+    }
+
+    pub fn drop_runtime(self) {
+        drop(self.runtime);
     }
 }
 
@@ -262,23 +291,21 @@ pub struct Connection {
     // Pointer to the Env from which
     // this Connection was allocated
     pub env: *mut MongoHandle,
-    // the tokio runtime all async operations will run on
-    pub runtime: Arc<tokio::runtime::Runtime>,
     // mongo_connection is the actual connection to the mongo server
     // it will be None when the Connection is closed.
-    pub mongo_connection: RwLock<Option<mongo_odbc_core::MongoConnection>>,
+    pub mongo_connection: sync::RwLock<Option<mongo_odbc_core::MongoConnection>>,
     // all the possible Connection settings
-    pub attributes: RwLock<ConnectionAttributes>,
+    pub attributes: sync::RwLock<ConnectionAttributes>,
     // state of this connection
-    pub state: RwLock<ConnectionState>,
+    pub state: sync::RwLock<ConnectionState>,
     // MongoDB Client for issuing commands
     // pub client: Option<MongoClient>,
     // all Statements allocated from this Connection
-    pub statements: RwLock<HashSet<*mut MongoHandle>>,
-    pub errors: RwLock<Vec<ODBCError>>,
+    pub statements: sync::RwLock<HashSet<*mut MongoHandle>>,
+    pub errors: sync::RwLock<Vec<ODBCError>>,
     // type_mode indicates if BsonTypeInfo.simple_type_info will be
     // utilized in place of standard BsonTypeInfo fields
-    pub type_mode: RwLock<TypeMode>,
+    pub type_mode: sync::RwLock<TypeMode>,
 }
 
 #[derive(Debug, Default)]
@@ -308,18 +335,31 @@ impl Connection {
     pub fn with_state(env: *mut MongoHandle, state: ConnectionState) -> Self {
         Self {
             env,
-            mongo_connection: RwLock::new(None),
-            attributes: RwLock::new(ConnectionAttributes::default()),
-            state: RwLock::new(state),
-            statements: RwLock::new(HashSet::new()),
-            errors: RwLock::new(vec![]),
-            type_mode: RwLock::new(TypeMode::Standard),
-            runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
+            mongo_connection: sync::RwLock::new(None),
+            attributes: sync::RwLock::new(ConnectionAttributes::default()),
+            state: sync::RwLock::new(state),
+            statements: sync::RwLock::new(HashSet::new()),
+            errors: sync::RwLock::new(vec![]),
+            type_mode: sync::RwLock::new(TypeMode::Standard),
         }
     }
 
-    pub fn runtime(&self) -> Arc<tokio::runtime::Runtime> {
-        self.runtime.clone()
+    pub fn runtime(&self) -> &tokio::runtime::Handle {
+        unsafe {
+            self.env
+                .as_ref()
+                .unwrap()
+                .as_env()
+                .unwrap()
+                .runtime
+                .handle()
+        }
+    }
+
+    pub async fn mongo_connection_guard(
+        &self,
+    ) -> sync::RwLockReadGuard<Option<mongo_odbc_core::MongoConnection>> {
+        self.mongo_connection.read().await
     }
 }
 
@@ -335,9 +375,9 @@ pub enum CachedData {
 #[derive(Debug)]
 pub struct Statement {
     pub connection: *mut MongoHandle,
-    pub mongo_statement: RwLock<Option<Box<MongoStatementImplementer>>>,
+    pub mongo_statement: sync::RwLock<Option<Box<MongoStatementImplementer>>>,
     pub var_data_cache: RwLock<Option<HashMap<USmallInt, CachedData>>>,
-    pub attributes: RwLock<StatementAttributes>,
+    pub attributes: sync::RwLock<StatementAttributes>,
     pub state: RwLock<StatementState>,
     pub statement_id: RwLock<Bson>,
     // pub cursor: RwLock<Option<Box<Peekable<Cursor>>>>,
@@ -437,7 +477,7 @@ impl Statement {
             state: RwLock::new(state),
             statement_id: RwLock::new(Uuid::new().into()),
             var_data_cache: RwLock::new(None),
-            attributes: RwLock::new(StatementAttributes {
+            attributes: sync::RwLock::new(StatementAttributes {
                 app_row_desc: Box::into_raw(Box::new(MongoHandle::Descriptor(
                     implicit_app_row_desc,
                 ))),
@@ -481,7 +521,7 @@ impl Statement {
                 use_bookmarks: UseBookmarks::Off,
             }),
             errors: RwLock::new(vec![]),
-            mongo_statement: RwLock::new(None),
+            mongo_statement: sync::RwLock::new(None),
             bound_cols: RwLock::new(None),
         }
     }
@@ -493,6 +533,23 @@ impl Statement {
             .as_mut()
             .unwrap()
             .insert(col, data);
+    }
+
+    pub fn runtime(&self) -> &tokio::runtime::Handle {
+        unsafe {
+            self.connection
+                .as_ref()
+                .unwrap()
+                .as_connection()
+                .unwrap()
+                .env
+                .as_ref()
+                .unwrap()
+                .as_env()
+                .unwrap()
+                .runtime
+                .handle()
+        }
     }
 }
 

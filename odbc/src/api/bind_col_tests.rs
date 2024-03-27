@@ -18,8 +18,8 @@ mod unit {
     };
     use std::ptr::null_mut;
 
-    #[test]
-    fn test_binding_and_rebinding_column() {
+    #[tokio::test]
+    async fn test_binding_and_rebinding_column() {
         // Set up MongoHandle
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -32,9 +32,9 @@ mod unit {
             let s = (*stmt).as_statement().unwrap();
 
             // set all statement attributes to the correct values.
-            s.attributes.write().unwrap().row_bind_offset_ptr = null_mut();
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
+            s.attributes.write().await.row_bind_offset_ptr = null_mut();
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
 
             // Set the mongo_statement to have non-empty cursor initially.
             // Here, we create a MockQuery with nonsense dummy data since the
@@ -65,7 +65,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
 
@@ -135,8 +135,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_unbinding_column() {
+    #[tokio::test]
+    async fn test_unbinding_column() {
         // Set up MongoHandle
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -165,9 +165,9 @@ mod unit {
             });
 
             // set all statement attributes to the correct values.
-            s.attributes.write().unwrap().row_bind_offset_ptr = null_mut();
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
+            s.attributes.write().await.row_bind_offset_ptr = null_mut();
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
 
             // Set the mongo_statement to have non-empty cursor initially.
             // Here, we create a MockQuery with nonsense dummy data since the
@@ -198,7 +198,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
 
@@ -228,8 +228,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_invalid_column_number() {
+    #[tokio::test]
+    async fn test_invalid_column_number() {
         // Set up MongoHandle
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -242,9 +242,9 @@ mod unit {
             let s = (*stmt).as_statement().unwrap();
 
             // set all statement attributes to the correct values.
-            s.attributes.write().unwrap().row_bind_offset_ptr = null_mut();
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
+            s.attributes.write().await.row_bind_offset_ptr = null_mut();
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
 
             // Set the mongo_statement to have non-empty cursor initially.
             // Here, we create a MockQuery with nonsense dummy data since the
@@ -275,7 +275,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;
@@ -298,8 +298,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_invalid_target_type() {
+    #[tokio::test]
+    async fn test_invalid_target_type() {
         // Set up MongoHandle
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -312,9 +312,9 @@ mod unit {
             let s = (*stmt).as_statement().unwrap();
 
             // set all statement attributes to the correct values.
-            s.attributes.write().unwrap().row_bind_offset_ptr = null_mut();
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
+            s.attributes.write().await.row_bind_offset_ptr = null_mut();
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
 
             // Set the mongo_statement to have non-empty cursor initially.
             // Here, we create a MockQuery with nonsense dummy data since the
@@ -345,7 +345,7 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;
@@ -361,8 +361,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_unsupported_ways_to_column_bind() {
+    #[tokio::test]
+    async fn test_unsupported_ways_to_column_bind() {
         // Set up MongoHandle
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -403,16 +403,16 @@ mod unit {
             let _ = mock_query.next(None);
 
             // Set the mongo_statement
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             let indicator: *mut Len = null_mut();
             let buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 4])) as *mut _;
 
             // set all statement attributes to the correct values except for row_bind_offset_ptr.
-            s.attributes.write().unwrap().row_bind_offset_ptr =
+            s.attributes.write().await.row_bind_offset_ptr =
                 Box::into_raw(Box::new(100)) as *mut ULen;
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = BindType::SQL_BIND_BY_COLUMN as usize;
 
             // Assert that SQLBindCol returns an error because row_bind_offset_ptr is not null.
             assert_eq!(
@@ -428,9 +428,9 @@ mod unit {
             );
 
             // Free memory and set row_bind_offset_ptr to null. Set row_array_size to an invalid number.
-            let _ = Box::from_raw(s.attributes.write().unwrap().row_bind_offset_ptr as *mut WChar);
-            s.attributes.write().unwrap().row_bind_offset_ptr = null_mut();
-            s.attributes.write().unwrap().row_array_size = 100;
+            let _ = Box::from_raw(s.attributes.write().await.row_bind_offset_ptr as *mut WChar);
+            s.attributes.write().await.row_bind_offset_ptr = null_mut();
+            s.attributes.write().await.row_array_size = 100;
 
             // Assert that SQLBindCol returns an error because row_array_size is not 1.
             assert_eq!(
@@ -446,8 +446,8 @@ mod unit {
             );
 
             // set row_array_size to 1 and set row_bind_type to an invalid number.
-            s.attributes.write().unwrap().row_array_size = 1;
-            s.attributes.write().unwrap().row_bind_type = 10;
+            s.attributes.write().await.row_array_size = 1;
+            s.attributes.write().await.row_bind_type = 10;
 
             // Assert that SQLBindCol returns an error because row_bind_type is not 0 (i.e., BindType::SQL_BIND_BY_COLUMN).
             assert_eq!(

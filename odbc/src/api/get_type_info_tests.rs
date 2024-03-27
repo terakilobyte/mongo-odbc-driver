@@ -41,8 +41,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_invalid_cursor_state_error() {
+    #[tokio::test]
+    async fn test_invalid_cursor_state_error() {
         // checks for invalid cursor state when calling get_value before next
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
@@ -58,7 +58,7 @@ mod unit {
             let value = stmt
                 .mongo_statement
                 .write()
-                .unwrap()
+                .await
                 .as_ref()
                 .unwrap()
                 .get_value(1);
@@ -66,8 +66,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_odbc_2_returns_proper_date_type() {
+    #[tokio::test]
+    async fn test_odbc_2_returns_proper_date_type() {
         // Checks that when ODBC Version is set to 2, the date returned has the proper sql type, which shoudld be mapped in SQLGetTypeInfo
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         env.as_env().unwrap().attributes.write().unwrap().odbc_ver = AttrOdbcVersion::SQL_OV_ODBC2;
@@ -85,7 +85,7 @@ mod unit {
             let sql_type = stmt
                 .mongo_statement
                 .write()
-                .unwrap()
+                .await
                 .as_ref()
                 .unwrap()
                 .get_value(2)
@@ -99,8 +99,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_odbc_3_returns_proper_date_type() {
+    #[tokio::test]
+    async fn test_odbc_3_returns_proper_date_type() {
         // Checks that when ODBC Version is set to 3, the date returned has the proper sql type
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         env.as_env().unwrap().attributes.write().unwrap().odbc_ver =
@@ -119,7 +119,7 @@ mod unit {
             let sql_type = stmt
                 .mongo_statement
                 .write()
-                .unwrap()
+                .await
                 .as_ref()
                 .unwrap()
                 .get_value(2)

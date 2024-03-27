@@ -430,13 +430,13 @@ mod unit {
         actual_value_modifier = modify_u32_value,
     );
 
-    #[test]
-    fn sql_database_name() {
+    #[tokio::test]
+    async fn sql_database_name() {
         unsafe {
             let info_type = InfoType::SQL_DATABASE_NAME;
 
             let conn = Connection::with_state(std::ptr::null_mut(), ConnectionState::Connected);
-            conn.attributes.write().unwrap().current_catalog = Some("test".to_string());
+            conn.attributes.write().await.current_catalog = Some("test".to_string());
             let mongo_handle: *mut _ = &mut MongoHandle::Connection(conn);
 
             let value_ptr: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 40])) as *mut _;

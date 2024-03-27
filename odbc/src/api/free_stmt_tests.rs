@@ -99,11 +99,11 @@ mod unit {
             );
 
             // Must call next to set the `current` field.
-            let _ = mock_query.next(None);
+            let _ = mock_query.next(None).await;
 
             // Set the mongo_statement
             let s = (*stmt).as_statement().unwrap();
-            *s.mongo_statement.write().unwrap() = Some(Box::new(mock_query.clone().into()));
+            *s.mongo_statement.write().await = Some(Box::new(mock_query.clone().into()));
 
             assert_eq!(
                 SqlReturn::SUCCESS,
@@ -114,7 +114,7 @@ mod unit {
             match s
                 .mongo_statement
                 .read()
-                .unwrap()
+                .await
                 .as_ref()
                 .unwrap()
                 .get_value(1)
@@ -127,7 +127,7 @@ mod unit {
             match s
                 .mongo_statement
                 .write()
-                .unwrap()
+                .await
                 .as_mut()
                 .unwrap()
                 .next(None)
@@ -140,8 +140,8 @@ mod unit {
         }
     }
 
-    #[test]
-    fn test_free_stmt_close_non_query() {
+    #[tokio::test]
+    async fn test_free_stmt_close_non_query() {
         let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let conn =
             &mut MongoHandle::Connection(Connection::with_state(env, ConnectionState::Allocated));
@@ -152,7 +152,7 @@ mod unit {
             // Using a MongoCollections mongo_statement means there is no additional data
             // to set or test.
             let s = (*stmt).as_statement().unwrap();
-            *s.mongo_statement.write().unwrap() = Some(Box::new(MongoCollections::empty().into()));
+            *s.mongo_statement.write().await = Some(Box::new(MongoCollections::empty().into()));
 
             assert_eq!(
                 SqlReturn::SUCCESS,

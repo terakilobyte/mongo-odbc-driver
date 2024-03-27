@@ -7,7 +7,6 @@ mod unit {
     };
     use cstr::input_text_to_string_w;
     use definitions::{ConnectionAttribute, Integer, Pointer, SqlReturn, UInteger};
-    use std::sync::RwLock;
 
     mod get {
         use std::mem::size_of;
@@ -86,7 +85,7 @@ mod unit {
             current_catalog,
             attribute = ConnectionAttribute::SQL_ATTR_CURRENT_CATALOG as i32,
             expected_sql_return = SqlReturn::SUCCESS,
-            initial_attrs = RwLock::new(ConnectionAttributes {
+            initial_attrs = tokio::sync::RwLock::new(ConnectionAttributes {
                 current_catalog: Some("test".to_string()),
                 ..Default::default()
             }),
@@ -109,7 +108,7 @@ mod unit {
             connection_timeout,
             attribute = ConnectionAttribute::SQL_ATTR_CONNECTION_TIMEOUT as i32,
             expected_sql_return = SqlReturn::SUCCESS,
-            initial_attrs = RwLock::new(ConnectionAttributes {
+            initial_attrs = tokio::sync::RwLock::new(ConnectionAttributes {
                 connection_timeout: Some(42),
                 ..Default::default()
             }),
@@ -131,7 +130,7 @@ mod unit {
             login_timeout,
             attribute = ConnectionAttribute::SQL_ATTR_LOGIN_TIMEOUT as i32,
             expected_sql_return = SqlReturn::SUCCESS,
-            initial_attrs = RwLock::new(ConnectionAttributes {
+            initial_attrs = tokio::sync::RwLock::new(ConnectionAttributes {
                 login_timeout: Some(42),
                 ..Default::default()
             }),
@@ -151,8 +150,8 @@ mod unit {
     }
 
     // Test setting LoginTimeout attribute.
-    #[test]
-    fn set_login_timeout() {
+    #[tokio::test]
+    async fn set_login_timeout() {
         unsafe {
             let conn = Connection::with_state(std::ptr::null_mut(), ConnectionState::Connected);
             let mongo_handle: *mut _ = &mut MongoHandle::Connection(conn);
@@ -169,14 +168,14 @@ mod unit {
                 )
             );
             let conn_handle = (*mongo_handle).as_connection().unwrap();
-            let attributes = &conn_handle.attributes.read().unwrap();
+            let attributes = &conn_handle.attributes.read().await;
             assert_eq!(attributes.login_timeout, Some(42));
         }
     }
 
     // Test setting the current catalog attribute.
-    #[test]
-    fn set_current_catalog() {
+    #[tokio::test]
+    async fn set_current_catalog() {
         unsafe {
             let conn = Connection::with_state(std::ptr::null_mut(), ConnectionState::Connected);
             let mongo_handle: *mut _ = &mut MongoHandle::Connection(conn);
@@ -194,7 +193,7 @@ mod unit {
                 )
             );
             let conn_handle = (*mongo_handle).as_connection().unwrap();
-            let attributes = &conn_handle.attributes.read().unwrap();
+            let attributes = &conn_handle.attributes.read().await;
             assert_eq!(attributes.current_catalog, Some("test".to_string()));
         }
     }
@@ -221,8 +220,8 @@ mod unit {
     ];
 
     // Test getting unsupported attributes.
-    #[test]
-    fn get_unsupported_attr() {
+    #[tokio::test]
+    async fn get_unsupported_attr() {
         unsafe {
             for attr in UNSUPPORTED_ATTRS {
                 let conn = Connection::with_state(std::ptr::null_mut(), ConnectionState::Connected);
@@ -238,14 +237,14 @@ mod unit {
                     )
                 );
                 // Check the actual error
-                assert_unsupported_connection_attr_error(mongo_handle, attr)
+                assert_unsupported_connection_attr_error(mongo_handle, attr).await
             }
         }
     }
 
     // Test setting invalid attributes.
-    #[test]
-    fn set_invalid_attr() {
+    #[tokio::test]
+    async fn set_invalid_attr() {
         unsafe {
             for attr in UNSUPPORTED_ATTRS {
                 let conn = Connection::with_state(std::ptr::null_mut(), ConnectionState::Connected);
@@ -260,18 +259,18 @@ mod unit {
                         0
                     )
                 );
-                assert_unsupported_connection_attr_error(mongo_handle, attr)
+                assert_unsupported_connection_attr_error(mongo_handle, attr).await
             }
         }
     }
 
     // helper to assert actual error returned by Set/GetAttr
-    unsafe fn assert_unsupported_connection_attr_error(
+    async unsafe fn assert_unsupported_connection_attr_error(
         mongo_handle: *mut MongoHandle,
         attr: ConnectionAttribute,
     ) {
         let conn_handle = (*mongo_handle).as_connection().unwrap();
-        let errors = &conn_handle.errors.read().unwrap();
+        let errors = &conn_handle.errors.read().await;
         assert_eq!(1, errors.len());
         let actual_err = errors.first().unwrap();
         match actual_err {

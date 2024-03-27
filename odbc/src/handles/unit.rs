@@ -28,8 +28,8 @@ fn test_env_alloc_free() {
     }
 }
 
-#[test]
-fn test_connection_alloc_free() {
+#[tokio::test]
+async fn test_connection_alloc_free() {
     unsafe {
         let env_handle: *mut _ = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
 
@@ -48,7 +48,7 @@ fn test_connection_alloc_free() {
         );
         assert_eq!(
             ConnectionState::Allocated,
-            *(*handle).as_connection().unwrap().state.read().unwrap()
+            *(*handle).as_connection().unwrap().state.read().await
         );
         assert_eq!(
             1,
@@ -88,8 +88,8 @@ fn test_connection_alloc_free() {
     }
 }
 
-#[test]
-fn test_statement_alloc_free() {
+#[tokio::test]
+async fn test_statement_alloc_free() {
     unsafe {
         let env_handle: *mut _ = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
 
@@ -122,7 +122,7 @@ fn test_statement_alloc_free() {
                 .unwrap()
                 .statements
                 .read()
-                .unwrap()
+                .await
                 .len()
         );
         assert_eq!(
@@ -139,7 +139,7 @@ fn test_statement_alloc_free() {
                 .unwrap()
                 .statements
                 .read()
-                .unwrap()
+                .await
                 .len()
         );
     }
@@ -182,8 +182,8 @@ fn test_descriptor_alloc_free() {
     }
 }
 
-#[test]
-fn test_invalid_free() {
+#[tokio::test]
+async fn test_invalid_free() {
     unsafe {
         let mut env_handle: *mut _ = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
         let env_handle_ptr: *mut _ = &mut env_handle;
@@ -236,12 +236,7 @@ fn test_invalid_free() {
         );
         assert_eq!(
             ConnectionState::Allocated,
-            *(*conn_handle)
-                .as_connection()
-                .unwrap()
-                .state
-                .read()
-                .unwrap()
+            *(*conn_handle).as_connection().unwrap().state.read().await
         );
         assert_eq!(
             SqlReturn::INVALID_HANDLE,

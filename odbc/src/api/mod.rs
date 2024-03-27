@@ -106,3 +106,12 @@ macro_rules! add_diag_with_function {
         $handle.add_diag_info($error);
     };
 }
+
+// #[macro_export]
+// macro_rules! add_diag_with_function_and_handle_info {
+//     ($handle_info:expr, $error:expr, $fct_name:expr) => {
+//         let message = format!("{} {}:: {}", $handle_info, $fct_name, $error);
+//         log::error!("{}", message);
+//         $handle.add_diag_info($error);
+//     };
+// }

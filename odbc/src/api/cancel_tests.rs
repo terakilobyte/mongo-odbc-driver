@@ -132,7 +132,7 @@ mod integration {
             operation_timeout: None,
             uuid_repr: None,
         };
-        *conn_handle.mongo_connection.write().unwrap() = Some(mongo_connection);
+        *conn_handle.mongo_connection.write().await = Some(mongo_connection);
         let conn = &mut MongoHandle::Connection(conn_handle);
 
         let stmt_handle = Statement::with_state(conn, StatementState::SynchronousQueryExecuting);

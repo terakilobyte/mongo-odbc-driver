@@ -756,7 +756,6 @@ pub unsafe fn format_bson_data(
     match data {
         Bson::Null | Bson::Undefined => {
             let stmt = (*mongo_handle).as_statement().unwrap();
-
             if str_len_or_ind_ptr.is_null() {
                 stmt.errors
                     .write()
@@ -772,16 +771,19 @@ pub unsafe fn format_bson_data(
     }
 
     let uuid_repr = match (*mongo_handle).as_statement_connection() {
-        Some(conn) => match conn.mongo_connection.read() {
-            Ok(conn) => {
-                if conn.as_ref().is_some() {
-                    conn.as_ref().unwrap().uuid_repr
-                } else {
-                    None
+        Some(conn) => conn.runtime().block_on(async {
+            let guard = conn.mongo_connection_guard().await;
+            match guard.as_ref() {
+                Some(conn) => {
+                    if conn.uuid_repr.is_some() {
+                        conn.uuid_repr
+                    } else {
+                        None
+                    }
                 }
+                None => None,
             }
-            Err(_) => None,
-        },
+        }),
         None => None,
     };
 

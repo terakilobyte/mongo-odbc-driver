@@ -519,7 +519,7 @@ lazy_static! {
         );
 }
 
-fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
+async fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
     let env = Box::into_raw(Box::new(MongoHandle::Env(Env::with_state(
         EnvState::ConnectionAllocated,
     ))));
@@ -528,7 +528,7 @@ fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(
+    *stmt.mongo_statement.write().await = Some(Box::new(
         MongoQuery::new(
             vec![
                 doc! {"a": {"b": 42}},
@@ -558,7 +558,7 @@ fn sql_fetch_and_more_results_basic_functionality(type_mode: TypeMode) {
     }
 }
 
-fn indicator_missing(mq: MongoStatementImplementer) {
+async fn indicator_missing(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -570,7 +570,7 @@ fn indicator_missing(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq.into()));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq.into()));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -607,7 +607,7 @@ fn indicator_missing(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_wstring_data(mq: MongoStatementImplementer) {
+async fn sql_get_wstring_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_w;
     use definitions::CDataType;
@@ -620,7 +620,7 @@ fn sql_get_wstring_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq.into()));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq.into()));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -705,7 +705,7 @@ fn sql_get_wstring_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_wstring_data_by_pieces(mq: MongoStatementImplementer) {
+async fn sql_get_wstring_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_w;
     use definitions::CDataType;
@@ -719,7 +719,7 @@ fn sql_get_wstring_data_by_pieces(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -790,7 +790,7 @@ fn sql_get_wstring_data_by_pieces(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_guid_data(mq: MongoStatementImplementer) {
+async fn sql_get_guid_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -802,7 +802,7 @@ fn sql_get_guid_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -871,7 +871,7 @@ fn sql_get_guid_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_string_data_by_pieces(mq: MongoStatementImplementer) {
+async fn sql_get_string_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_a;
     use definitions::CDataType;
@@ -884,7 +884,7 @@ fn sql_get_string_data_by_pieces(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -925,7 +925,7 @@ fn sql_get_string_data_by_pieces(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_binary_data(mq: MongoStatementImplementer) {
+async fn sql_get_binary_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -937,7 +937,7 @@ fn sql_get_binary_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1026,7 +1026,7 @@ fn sql_get_binary_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_binary_data_by_pieces(mq: MongoStatementImplementer) {
+async fn sql_get_binary_data_by_pieces(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1038,7 +1038,7 @@ fn sql_get_binary_data_by_pieces(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1103,7 +1103,7 @@ fn sql_get_binary_data_by_pieces(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_string_data(mq: MongoStatementImplementer) {
+async fn sql_get_string_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use cstr::input_text_to_string_a;
     use definitions::CDataType;
@@ -1116,7 +1116,7 @@ fn sql_get_string_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1203,7 +1203,7 @@ fn sql_get_string_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_bit_data(mq: MongoStatementImplementer) {
+async fn sql_get_bit_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1215,7 +1215,7 @@ fn sql_get_bit_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1403,7 +1403,7 @@ fn sql_get_bit_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_i64_data(mq: MongoStatementImplementer) {
+async fn sql_get_i64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1415,7 +1415,7 @@ fn sql_get_i64_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1596,7 +1596,7 @@ fn sql_get_i64_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_u64_data(mq: MongoStatementImplementer) {
+async fn sql_get_u64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1608,7 +1608,7 @@ fn sql_get_u64_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1795,7 +1795,7 @@ fn sql_get_u64_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_i32_data(mq: MongoStatementImplementer) {
+async fn sql_get_i32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -1807,7 +1807,7 @@ fn sql_get_i32_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -1988,7 +1988,7 @@ fn sql_get_i32_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_u32_data(mq: MongoStatementImplementer) {
+async fn sql_get_u32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2000,7 +2000,7 @@ fn sql_get_u32_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -2187,7 +2187,7 @@ fn sql_get_u32_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_f64_data(mq: MongoStatementImplementer) {
+async fn sql_get_f64_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2199,7 +2199,7 @@ fn sql_get_f64_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -2373,7 +2373,7 @@ fn sql_get_f64_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_f32_data(mq: MongoStatementImplementer) {
+async fn sql_get_f32_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2385,7 +2385,7 @@ fn sql_get_f32_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -2559,7 +2559,7 @@ fn sql_get_f32_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_datetime_data(mq: MongoStatementImplementer) {
+async fn sql_get_datetime_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2571,7 +2571,7 @@ fn sql_get_datetime_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -2770,7 +2770,7 @@ fn sql_get_datetime_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_date_data(mq: MongoStatementImplementer) {
+async fn sql_get_date_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2782,7 +2782,7 @@ fn sql_get_date_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -2974,7 +2974,7 @@ fn sql_get_date_data(mq: MongoStatementImplementer) {
     }
 }
 
-fn sql_get_time_data(mq: MongoStatementImplementer) {
+async fn sql_get_time_data(mq: MongoStatementImplementer) {
     use crate::api::functions::SQLGetData;
     use definitions::CDataType;
 
@@ -2986,7 +2986,7 @@ fn sql_get_time_data(mq: MongoStatementImplementer) {
         ConnectionState::Connected,
     ))));
     let stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-    *stmt.mongo_statement.write().unwrap() = Some(Box::new(mq));
+    *stmt.mongo_statement.write().await = Some(Box::new(mq));
 
     let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
     unsafe {
@@ -3214,117 +3214,117 @@ mod unit_tests {
         }
     }
 
-    #[test]
-    fn sql_fetch_and_more_results_basic_functionality_test() {
-        sql_fetch_and_more_results_basic_functionality(TypeMode::Standard);
-        sql_fetch_and_more_results_basic_functionality(TypeMode::Simple);
+    #[tokio::test]
+    async fn sql_fetch_and_more_results_basic_functionality_test() {
+        sql_fetch_and_more_results_basic_functionality(TypeMode::Standard).await;
+        sql_fetch_and_more_results_basic_functionality(TypeMode::Simple).await;
     }
 
-    #[test]
-    fn indicator_missing_test() {
-        indicator_missing(STANDARD_BSON_TYPE_MQ.clone().into());
-        indicator_missing(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn indicator_missing_test() {
+        indicator_missing(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        indicator_missing(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_wstring_data_test() {
-        sql_get_wstring_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_wstring_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_wstring_data_test() {
+        sql_get_wstring_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_wstring_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_wstring_data_by_pieces_test() {
-        sql_get_wstring_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_wstring_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_wstring_data_by_pieces_test() {
+        sql_get_wstring_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_wstring_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_guid_data_test() {
-        sql_get_guid_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_guid_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_guid_data_test() {
+        sql_get_guid_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_guid_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_string_data_by_pieces_test() {
-        sql_get_string_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_string_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_string_data_by_pieces_test() {
+        sql_get_string_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_string_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_binary_data_test() {
-        sql_get_binary_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_binary_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_binary_data_test() {
+        sql_get_binary_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_binary_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_binary_data_by_pieces_test() {
-        sql_get_binary_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_binary_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_binary_data_by_pieces_test() {
+        sql_get_binary_data_by_pieces(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_binary_data_by_pieces(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_string_data_test() {
-        sql_get_string_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_string_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_string_data_test() {
+        sql_get_string_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_string_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_bit_data_test() {
-        sql_get_bit_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_bit_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_bit_data_test() {
+        sql_get_bit_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_bit_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_i64_data_test() {
-        sql_get_i64_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_i64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_i64_data_test() {
+        sql_get_i64_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_i64_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_u64_data_test() {
-        sql_get_u64_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_u64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_u64_data_test() {
+        sql_get_u64_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_u64_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_i32_data_test() {
-        sql_get_i32_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_i32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_i32_data_test() {
+        sql_get_i32_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_i32_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_u32_data_test() {
-        sql_get_u32_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_u32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_u32_data_test() {
+        sql_get_u32_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_u32_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_f64_data_test() {
-        sql_get_f64_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_f64_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_f64_data_test() {
+        sql_get_f64_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_f64_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_f32_data_test() {
-        sql_get_f32_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_f32_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_f32_data_test() {
+        sql_get_f32_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_f32_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_datetime_data_test() {
-        sql_get_datetime_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_datetime_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_datetime_data_test() {
+        sql_get_datetime_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_datetime_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_date_data_test() {
-        sql_get_date_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_date_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_date_data_test() {
+        sql_get_date_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_date_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 
-    #[test]
-    fn sql_get_time_data_test() {
-        sql_get_time_data(STANDARD_BSON_TYPE_MQ.clone().into());
-        sql_get_time_data(SIMPLE_BSON_TYPE_MQ.clone().into());
+    #[tokio::test]
+    async fn sql_get_time_data_test() {
+        sql_get_time_data(STANDARD_BSON_TYPE_MQ.clone().into()).await;
+        sql_get_time_data(SIMPLE_BSON_TYPE_MQ.clone().into()).await;
     }
 }

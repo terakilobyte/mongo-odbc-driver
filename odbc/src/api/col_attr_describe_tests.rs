@@ -4,7 +4,6 @@ use crate::{
 };
 use definitions::{Desc, Nullability, SmallInt, SqlReturn, WChar};
 use mongo_odbc_core::{MongoFields, SQL_SEARCHABLE};
-use std::sync::RwLock;
 
 mod unit {
     use definitions::SqlDataType;
@@ -288,7 +287,8 @@ mod unit {
         ))));
 
         let mut stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-        stmt.mongo_statement = RwLock::new(Some(Box::new(MongoFields::empty().into())));
+        stmt.mongo_statement =
+            tokio::sync::RwLock::new(Some(Box::new(MongoFields::empty().into())));
         let stmt_handle: *mut _ = &mut MongoHandle::Statement(stmt);
 
         unsafe {
@@ -348,7 +348,8 @@ mod unit {
         ))));
 
         let mut stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-        stmt.mongo_statement = RwLock::new(Some(Box::new(MongoFields::empty().into())));
+        stmt.mongo_statement =
+            tokio::sync::RwLock::new(Some(Box::new(MongoFields::empty().into())));
         let mongo_handle: *mut _ = &mut MongoHandle::Statement(stmt);
         for desc in [
             // string descriptor
@@ -412,7 +413,8 @@ mod unit {
 
             let mut stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
 
-            stmt.mongo_statement = RwLock::new(Some(Box::new(MongoFields::empty().into())));
+            stmt.mongo_statement =
+                tokio::sync::RwLock::new(Some(Box::new(MongoFields::empty().into())));
             let mongo_handle: *mut _ = &mut MongoHandle::Statement(stmt);
             let col_index = 3; //TABLE_NAME
             for (desc, expected) in [
@@ -471,7 +473,8 @@ mod unit {
         ))));
 
         let mut stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
-        stmt.mongo_statement = RwLock::new(Some(Box::new(MongoFields::empty().into())));
+        stmt.mongo_statement =
+            tokio::sync::RwLock::new(Some(Box::new(MongoFields::empty().into())));
         let mongo_handle: *mut _ = &mut MongoHandle::Statement(stmt);
         let col_index = 3; //TABLE_NAME
         for (desc, expected) in [
@@ -543,7 +546,8 @@ mod unit {
 
             let mut stmt = Statement::with_state(conn as *mut _, StatementState::Allocated);
 
-            stmt.mongo_statement = RwLock::new(Some(Box::new(MongoFields::empty().into())));
+            stmt.mongo_statement =
+                tokio::sync::RwLock::new(Some(Box::new(MongoFields::empty().into())));
             let mongo_handle: *mut _ = &mut MongoHandle::Statement(stmt);
             let col_index = 3; //TABLE_NAME
             let name_buffer: *mut std::ffi::c_void = Box::into_raw(Box::new([0u8; 40])) as *mut _;
