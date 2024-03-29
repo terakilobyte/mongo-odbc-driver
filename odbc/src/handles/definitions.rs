@@ -216,6 +216,9 @@ pub struct Env {
     pub state: RwLock<EnvState>,
     pub connections: RwLock<HashSet<*mut MongoHandle>>,
     pub errors: RwLock<Vec<ODBCError>>,
+
+    // tokio runtime
+    pub runtime: tokio::runtime::Runtime,
 }
 
 impl Env {
@@ -225,6 +228,10 @@ impl Env {
             state: RwLock::new(state),
             connections: RwLock::new(HashSet::new()),
             errors: RwLock::new(vec![]),
+            runtime: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
         }
     }
 }
