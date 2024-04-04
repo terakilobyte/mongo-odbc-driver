@@ -200,6 +200,7 @@ impl MongoDatabases {
         mongo_connection: &MongoConnection,
         _query_timeout: Option<i32>,
     ) -> Self {
+        let _guard = mongo_connection.runtime.enter();
         mongo_connection.runtime.block_on(async {
             let database_names: Vec<String> = mongo_connection
                 .client

@@ -2,11 +2,15 @@ use crate::odbc_uri::UserOptions;
 use crate::{err::Result, Error};
 use crate::{MongoQuery, TypeMode};
 use bson::{doc, Bson, UuidRepresentation};
+use mongodb::options::Credential;
 use mongodb::Client;
 use serde::{Deserialize, Serialize};
+use std::os::raw::c_void;
 use std::time::Duration;
+use tokio::runtime::{Handle, Runtime};
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct MongoConnection {
     /// The mongo DB client
     pub client: Client,
@@ -20,6 +24,38 @@ pub struct MongoConnection {
 
     /// the tokio runtime
     pub runtime: tokio::runtime::Runtime,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn connect_to_mongo(raw_ptr: *mut *mut c_void) {
+    let client_options = mongodb::options::ClientOptions::builder()
+        .credential(
+            mongodb::options::Credential::builder()
+                .username(Some("mhuser".to_string()))
+                .password(Some("pencil".to_string()))
+                .build(),
+        )
+        .build();
+    let connection = MongoConnection::connect(
+        UserOptions {
+            client_options,
+            uuid_representation: None,
+        },
+        Some("integration_test".to_string()),
+        None,
+        None,
+        TypeMode::Simple,
+        None,
+    )
+    .unwrap();
+    (*raw_ptr) = Box::into_raw(Box::new(connection)) as *mut c_void;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn shutdown_mongo(raw_ptr: *mut c_void) {
+    println!("calling shut down");
+    let connection = Box::from_raw(raw_ptr as *mut MongoConnection);
+    connection.shutdown().unwrap();
 }
 
 impl MongoConnection {
@@ -39,15 +75,23 @@ impl MongoConnection {
         operation_timeout: Option<u32>,
         login_timeout: Option<u32>,
         type_mode: TypeMode,
+        mut runtime: Option<Runtime>,
     ) -> Result<Self> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        println!("{:?}", runtime);
+        if runtime.is_none() {
+            println!("creating runtime");
+            runtime = Some(Runtime::new().unwrap());
+        }
+        let runtime = runtime.take().unwrap_or_else(|| Runtime::new().unwrap());
+        println!("after receiving runtime");
         user_options.client_options.connect_timeout =
             login_timeout.map(|to| Duration::new(to as u64, 0));
-        let client = Client::with_options(user_options.client_options)
-            .map_err(Error::InvalidClientOptions)?;
+        let guard = runtime.enter();
+        let client = runtime.block_on(async {
+            Client::with_options(user_options.client_options).map_err(Error::InvalidClientOptions)
+        })?;
+        drop(guard);
+        println!("after client");
         let uuid_repr = user_options.uuid_representation;
         let connection = MongoConnection {
             client,
@@ -55,21 +99,35 @@ impl MongoConnection {
             uuid_repr,
             runtime,
         };
+        println!("after creating mongoconnection struct");
         // Verify that the connection is working and the user has access to the default DB
         // ADF is supposed to check permissions on this
+        let guard = connection.runtime.enter();
         MongoQuery::prepare(&connection, current_db, None, "select 1", type_mode)?;
+        drop(guard);
+
+        println!("after prepare");
 
         Ok(connection)
     }
 
     pub fn shutdown(self) -> Result<()> {
-        self.runtime
-            .block_on(async { self.client.shutdown().await });
+        println!("in shutdown");
+        dbg!(&self.runtime);
+        self.runtime.block_on(async {
+            println!("we're in the block_on");
+            self.client.shutdown().await
+        });
+        println!("after client shutdown");
+        println!("dropping runtime");
+        drop(self.runtime);
+        print!("runtime dropped");
         Ok(())
     }
 
     /// Gets the ADF version the client is connected to.
     pub fn get_adf_version(&self) -> Result<String> {
+        let _guard = self.runtime.enter();
         self.runtime.block_on(async {
             let db = self.client.database("admin");
             let cmd_res = db
@@ -84,6 +142,7 @@ impl MongoConnection {
 
     /// cancels all queries for a given statement id
     pub fn cancel_queries_for_statement(&self, statement_id: Bson) -> Result<bool> {
+        let _guard = self.runtime.enter();
         self.runtime.handle().block_on(async {
             // use $currentOp and match the comment field to identify any queries issued by the current statement
             let current_ops_pipeline = vec![

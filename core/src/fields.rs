@@ -490,7 +490,8 @@ impl MongoFields {
     ) -> Self {
         let dbs = db_name.map_or_else(
             || {
-                mongo_connection.runtime.handle().block_on(async {
+                let _guard = mongo_connection.runtime.enter();
+                mongo_connection.runtime.block_on(async {
                     mongo_connection
                         .client
                         .list_database_names(
@@ -541,8 +542,8 @@ impl MongoFields {
         &mut self,
         mongo_connection: &MongoConnection,
     ) -> Result<(bool, Vec<Error>)> {
-        let handle = mongo_connection.runtime.handle();
-        handle.block_on(async {
+        let _guard = mongo_connection.runtime.enter();
+        mongo_connection.runtime.block_on(async {
             let mut warnings: Vec<Error> = vec![];
             loop {
                 if self.collections_for_db.is_some() {

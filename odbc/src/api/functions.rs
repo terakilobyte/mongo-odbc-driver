@@ -138,6 +138,7 @@ macro_rules! panic_safe_exec_keep_diagnostics {
         let (s, r) = mpsc::sync_channel(1);
         let fct_name: &str = function_name!();
         panic::set_hook(Box::new(move |i| {
+            println!("in panic setting a hook with {:?}", i);
             if let Some(location) = i.location() {
                 let info = format!("in file '{}' at line {}", location.file(), location.line());
                 let _ = s.send(info);
@@ -1016,8 +1017,9 @@ pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
 }
 
 fn sql_driver_connect(conn: &Connection, odbc_uri_string: &str) -> Result<MongoConnection> {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
     let mut odbc_uri = ODBCUri::new(odbc_uri_string.to_string())?;
-    let client_options = odbc_uri.try_into_client_options()?;
+    let client_options = odbc_uri.try_into_client_options(runtime.handle())?;
     odbc_uri
         .remove(&["driver", "dsn"])
         .ok_or(ODBCError::MissingDriverOrDSNProperty)?;
@@ -1053,6 +1055,7 @@ fn sql_driver_connect(conn: &Connection, odbc_uri_string: &str) -> Result<MongoC
         connection_timeout,
         login_timeout,
         *conn.type_mode.read().unwrap(),
+        Some(runtime),
     )?)
 }
 

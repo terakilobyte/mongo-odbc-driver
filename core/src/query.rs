@@ -12,6 +12,7 @@ use mongodb::{
     Cursor,
 };
 use std::time::Duration;
+use tokio::runtime::Handle;
 
 #[derive(Debug)]
 pub struct MongoQuery {
@@ -38,8 +39,8 @@ impl MongoQuery {
         query: &str,
         type_mode: TypeMode,
     ) -> Result<Self> {
-        let handle = client.runtime.handle();
-        handle.block_on(async {
+        println!("in prepare");
+        client.runtime.block_on(async {
             let current_db = current_db.ok_or(Error::NoDatabase)?;
             let db = client.client.database(&current_db);
 
@@ -55,6 +56,11 @@ impl MongoQuery {
                     .map_err(Error::QueryExecutionFailed)?,
             )
             .map_err(Error::QueryDeserialization)?;
+
+            println!(
+                "get_result_schema_response: {:?}",
+                get_result_schema_response
+            );
 
             let metadata =
                 get_result_schema_response.process_result_metadata(&current_db, type_mode)?;
@@ -77,6 +83,7 @@ impl MongoStatement for MongoQuery {
     // This method deserializes the current row and stores it in self.
     fn next(&mut self, connection: Option<&MongoConnection>) -> Result<(bool, Vec<Error>)> {
         let res = if let Some(c) = connection {
+            let _guard = c.runtime.enter();
             let handle = c.runtime.handle();
             self.resultset_cursor
                 .as_mut()
@@ -153,9 +160,8 @@ impl MongoStatement for MongoQuery {
             _ => Error::QueryExecutionFailed(e),
         };
 
-        let handle = connection.runtime.handle();
-
-        let cursor: Cursor<Document> = handle.block_on(async {
+        let _guard = connection.runtime.enter();
+        let cursor: Cursor<Document> = connection.runtime.block_on(async {
             db.aggregate(pipeline, options)
                 .await
                 .map_err(map_query_error)
