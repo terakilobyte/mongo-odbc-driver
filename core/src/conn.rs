@@ -5,6 +5,7 @@ use bson::{doc, Bson, UuidRepresentation};
 use mongodb::options::Credential;
 use mongodb::Client;
 use serde::{Deserialize, Serialize};
+use std::ffi::{c_char, CString};
 use std::os::raw::c_void;
 use std::time::Duration;
 use tokio::runtime::{Handle, Runtime};
@@ -27,7 +28,18 @@ pub struct MongoConnection {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn shutdown_mongo(raw_ptr: *mut c_void) {
+    println!("calling shut down");
+    let connection = Box::from_raw(raw_ptr as *mut MongoConnection);
+    connection.shutdown().unwrap();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn connect_to_mongo(raw_ptr: *mut *mut c_void) {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
     let client_options = mongodb::options::ClientOptions::builder()
         .credential(
             mongodb::options::Credential::builder()
@@ -45,17 +57,19 @@ pub unsafe extern "C" fn connect_to_mongo(raw_ptr: *mut *mut c_void) {
         None,
         None,
         TypeMode::Simple,
-        None,
+        Some(runtime),
     )
     .unwrap();
     (*raw_ptr) = Box::into_raw(Box::new(connection)) as *mut c_void;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn shutdown_mongo(raw_ptr: *mut c_void) {
-    println!("calling shut down");
-    let connection = Box::from_raw(raw_ptr as *mut MongoConnection);
-    connection.shutdown().unwrap();
+pub unsafe extern "C" fn get_adf_version(raw_ptr: *mut c_void) -> *mut c_char {
+    println!("get adf called");
+    let connection = &*(raw_ptr as *const MongoConnection);
+    let version = connection.get_adf_version().unwrap();
+    let version_cstring = CString::new(version).unwrap();
+    version_cstring.into_raw()
 }
 
 impl MongoConnection {
