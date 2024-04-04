@@ -1076,27 +1076,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "integration_test"
-version = "0.0.0"
-dependencies = [
- "constants",
- "cstr",
- "definitions",
- "lazy_static",
- "log",
- "logger",
- "mongodb",
- "num-derive",
- "num-traits",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml 0.9.31",
- "shared_sql_utils",
- "thiserror",
-]
-
-[[package]]
 name = "io-lifetimes"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

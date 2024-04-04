@@ -36,10 +36,6 @@ pub unsafe extern "C" fn shutdown_mongo(raw_ptr: *mut c_void) {
 
 #[no_mangle]
 pub unsafe extern "C" fn connect_to_mongo(raw_ptr: *mut *mut c_void) {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
     let client_options = mongodb::options::ClientOptions::builder()
         .credential(
             mongodb::options::Credential::builder()
@@ -57,7 +53,7 @@ pub unsafe extern "C" fn connect_to_mongo(raw_ptr: *mut *mut c_void) {
         None,
         None,
         TypeMode::Simple,
-        Some(runtime),
+        None,
     )
     .unwrap();
     (*raw_ptr) = Box::into_raw(Box::new(connection)) as *mut c_void;
@@ -91,13 +87,12 @@ impl MongoConnection {
         type_mode: TypeMode,
         mut runtime: Option<Runtime>,
     ) -> Result<Self> {
-        println!("{:?}", runtime);
-        if runtime.is_none() {
-            println!("creating runtime");
-            runtime = Some(Runtime::new().unwrap());
-        }
-        let runtime = runtime.take().unwrap_or_else(|| Runtime::new().unwrap());
-        println!("after receiving runtime");
+        let runtime = runtime.take().unwrap_or_else(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+        });
         user_options.client_options.connect_timeout =
             login_timeout.map(|to| Duration::new(to as u64, 0));
         let guard = runtime.enter();
@@ -116,11 +111,10 @@ impl MongoConnection {
         println!("after creating mongoconnection struct");
         // Verify that the connection is working and the user has access to the default DB
         // ADF is supposed to check permissions on this
-        let guard = connection.runtime.enter();
         MongoQuery::prepare(&connection, current_db, None, "select 1", type_mode)?;
-        drop(guard);
 
         println!("after prepare");
+        dbg!(&connection.runtime);
 
         Ok(connection)
     }
@@ -141,8 +135,9 @@ impl MongoConnection {
 
     /// Gets the ADF version the client is connected to.
     pub fn get_adf_version(&self) -> Result<String> {
-        let _guard = self.runtime.enter();
-        self.runtime.block_on(async {
+        let guard = self.runtime.enter();
+        println!("took a guard in adf version");
+        let res = self.runtime.block_on(async {
             let db = self.client.database("admin");
             let cmd_res = db
                 .run_command(doc! {"buildInfo": 1}, None)
@@ -151,7 +146,9 @@ impl MongoConnection {
             let build_info: BuildInfoResult =
                 bson::from_document(cmd_res).map_err(Error::DatabaseVersionDeserialization)?;
             Ok(build_info.data_lake.version)
-        })
+        });
+        drop(guard);
+        res
     }
 
     /// cancels all queries for a given statement id

@@ -1,7 +1,7 @@
 use crate::{handles::definitions::*, SQLCancel};
 use definitions::SqlReturn;
 use mongo_odbc_core::MongoConnection;
-use mongodb::sync::Client;
+// use mongodb::sync::Client;
 use std::env;
 
 mod integration {

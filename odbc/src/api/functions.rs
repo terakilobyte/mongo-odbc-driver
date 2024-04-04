@@ -1017,7 +1017,10 @@ pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
 }
 
 fn sql_driver_connect(conn: &Connection, odbc_uri_string: &str) -> Result<MongoConnection> {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
     let mut odbc_uri = ODBCUri::new(odbc_uri_string.to_string())?;
     let client_options = odbc_uri.try_into_client_options(runtime.handle())?;
     odbc_uri
