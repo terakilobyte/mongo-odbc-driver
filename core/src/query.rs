@@ -6,6 +6,7 @@ use crate::{
     Error, TypeMode,
 };
 use bson::{doc, document::ValueAccessError, Bson, Document};
+use log::warn;
 use mongodb::{
     error::{CommandError, ErrorKind},
     options::AggregateOptions,
@@ -39,7 +40,7 @@ impl MongoQuery {
         query: &str,
         type_mode: TypeMode,
     ) -> Result<Self> {
-        println!("in prepare");
+        warn!("type mode is {:?}", type_mode);
         client.runtime.block_on(async {
             let current_db = current_db.ok_or(Error::NoDatabase)?;
             let db = client.client.database(&current_db);
@@ -56,11 +57,6 @@ impl MongoQuery {
                     .map_err(Error::QueryExecutionFailed)?,
             )
             .map_err(Error::QueryDeserialization)?;
-
-            println!(
-                "get_result_schema_response: {:?}",
-                get_result_schema_response
-            );
 
             let metadata =
                 get_result_schema_response.process_result_metadata(&current_db, type_mode)?;
@@ -141,6 +137,8 @@ impl MongoStatement for MongoQuery {
             "statement": &self.query,
         }}];
 
+        log::warn!("Executing query: {}", self.query);
+
         let opt = AggregateOptions::builder().comment_bson(Some(stmt_id));
         // If the query timeout is 0, it means "no timeout"
         let options = if self.query_timeout.is_some_and(|timeout| timeout > 0) {
@@ -160,12 +158,15 @@ impl MongoStatement for MongoQuery {
             _ => Error::QueryExecutionFailed(e),
         };
 
+        log::warn!("taking a tokio guard before executing query");
+
         let _guard = connection.runtime.enter();
         let cursor: Cursor<Document> = connection.runtime.block_on(async {
             db.aggregate(pipeline, options)
                 .await
                 .map_err(map_query_error)
         })?;
+        warn!("cursor created");
         self.resultset_cursor = Some(cursor);
         Ok(true)
     }
