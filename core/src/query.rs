@@ -1,6 +1,6 @@
 use crate::{
     col_metadata::{MongoColMetadata, SqlGetSchemaResponse},
-    conn::{self, MongoConnection},
+    conn::MongoConnection,
     err::Result,
     stmt::MongoStatement,
     Error, TypeMode,
@@ -13,7 +13,6 @@ use mongodb::{
     Cursor,
 };
 use std::time::Duration;
-use tokio::runtime::Handle;
 
 #[derive(Debug)]
 pub struct MongoQuery {
@@ -40,7 +39,6 @@ impl MongoQuery {
         query: &str,
         type_mode: TypeMode,
     ) -> Result<Self> {
-        warn!("type mode is {:?}", type_mode);
         client.runtime.block_on(async {
             let current_db = current_db.ok_or(Error::NoDatabase)?;
             let db = client.client.database(&current_db);

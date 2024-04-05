@@ -14,7 +14,6 @@ use futures::future;
 use lazy_static::lazy_static;
 use mongodb::{options::ListDatabasesOptions, results::CollectionType};
 use regex::Regex;
-use tokio::join;
 
 lazy_static! {
     static ref COLLECTIONS_METADATA: Vec<MongoColMetadata> = vec![
