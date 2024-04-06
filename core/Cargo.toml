@@ -27,7 +27,7 @@ fancy-regex = "0.11.0"
 shared_sql_utils = { path = "../shared_sql_utils" }
 log = "0.4.14"
 mongodb = "2.8.2"
-tokio = { version = "1", features = ["sync", "io-util", "macros"] }
+tokio = { version = "1", features = ["rt", "sync", "io-util", "macros", "net"] }
 futures = "0.3"
 
 # [dependencies.mongodb]

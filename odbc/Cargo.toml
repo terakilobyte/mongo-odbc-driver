@@ -27,7 +27,7 @@ definitions = { path = "../definitions" }
 shared_sql_utils = { path = "../shared_sql_utils" }
 logger = { path = "../logger" }
 log = "0.4.17"
-tokio = { version = "1", features = ["sync", "io-util", "macros"] }
+tokio = { version = "1", features = ["rt", "sync", "io-util", "macros", "net"] }
 mongodb = "2.8.2"
 
 [dependencies.bson]

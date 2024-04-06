@@ -2,7 +2,12 @@ use crate::err::{Error, Result};
 use bson::UuidRepresentation;
 use constants::{DEFAULT_APP_NAME, DRIVER_SHORT_NAME};
 use lazy_static::lazy_static;
-use mongodb::options::{ClientOptions, ConnectionString, Credential, DriverInfo, ServerAddress};
+use mongodb::{
+    options::{
+        ClientOptions, ConnectionString, Credential, DriverInfo, ResolverConfig, ServerAddress,
+    },
+    Client,
+};
 use regex::{Regex, RegexBuilder, RegexSet, RegexSetBuilder};
 use shared_sql_utils::Dsn;
 use std::collections::HashMap;
@@ -286,13 +291,21 @@ impl ODBCUri {
         let source = AUTH_SOURCE_REGEX
             .captures(uri)
             .and_then(|cap| cap.name("source").map(|s| s.as_str()));
+        let guard = handle.enter();
+        // trust-dns-resolver has a performance issue on windows, so we'll use cloudflare's resolver
+        // instead of the system resolver
+        // https://github.com/mongodb/mongo-rust-driver?tab=readme-ov-file#windows-dns-note
+        let parse_func = || async {
+            if cfg!(target_os = "windows") {
+                ClientOptions::parse_with_resolver_config(uri, ResolverConfig::cloudflare()).await
+            } else {
+                ClientOptions::parse(uri).await
+            }
+        };
         let mut client_options = handle
-            .block_on(async {
-                ClientOptions::parse_async(uri)
-                    .await
-                    .map_err(Error::InvalidClientOptions)
-            })
-            .unwrap();
+            .block_on(async { parse_func().await })
+            .map_err(Error::InvalidClientOptions)?;
+        drop(guard);
 
         if client_options.credential.is_some() {
             // user name set as attribute should supercede mongo uri
