@@ -111,8 +111,6 @@ unsafe fn modify_u16_value(value_ptr: Pointer, _: usize) -> u16 {
 mod unit {
 
     use super::*;
-    use constants::{DBMS_NAME, DRIVER_NAME, DRIVER_ODBC_VERSION, ODBC_VERSION};
-    use cstr::WideChar;
     use std::mem::size_of;
 
     test_get_info!(

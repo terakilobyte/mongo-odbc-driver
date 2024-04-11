@@ -114,21 +114,22 @@ macro_rules! odbc_unwrap {
 /// while clearing any diagnostics in the $handle's error vec.
 /// If a panic occurs during execution, the panic is caught and turned into a String.
 /// The panic message is added to the diagnostics of `handle` and SqlReturn::ERROR returned.
+#[macro_export]
 macro_rules! panic_safe_exec_clear_diagnostics {
     ($level:ident, $function:expr, $handle:expr) => {{
-        use crate::panic_safe_exec_keep_diagnostics;
         let handle = $handle;
         let handle_ref = MongoHandleRef::from(handle);
         handle_ref.clear_diagnostics();
-        panic_safe_exec_keep_diagnostics!($level, $function, $handle);
+        $crate::panic_safe_exec_keep_diagnostics!($level, $function, $handle);
     }};
 }
-pub(crate) use panic_safe_exec_clear_diagnostics;
+// pub(crate) use panic_safe_exec_clear_diagnostics;
 
 /// panic_safe_exec_keep_diagnostics executes `function` such that any panics do not crash the runtime,
 /// while retaining any diagnostics in the provided $handle's errors vec.
 /// If a panic occurs during execution, the panic is caught and turned into a String.
 /// The panic message is added to the diagnostics of `handle` and SqlReturn::ERROR returned.
+#[macro_export]
 macro_rules! panic_safe_exec_keep_diagnostics {
     ($level:ident, $function:expr, $handle:expr) => {{
         let function = $function;
@@ -150,9 +151,9 @@ macro_rules! panic_safe_exec_keep_diagnostics {
                 #[allow(unused_variables)]
                 let trace = trace_outcome(&sql_return);
                 if handle.is_null() {
-                    crate::trace_odbc!($level, trace, fct_name);
+                    $crate::trace_odbc!($level, trace, fct_name);
                 } else {
-                    crate::trace_odbc!($level, handle_ref, trace, fct_name);
+                    $crate::trace_odbc!($level, handle_ref, trace, fct_name);
                 }
 
                 return sql_return;
@@ -165,7 +166,7 @@ macro_rules! panic_safe_exec_keep_diagnostics {
                 };
 
                 if handle.is_null() {
-                    crate::trace_odbc_error!(ODBCError::Panic(panic_msg.clone()), fct_name);
+                    $crate::trace_odbc_error!(ODBCError::Panic(panic_msg.clone()), fct_name);
                 } else {
                     add_diag_with_function!(
                         handle_ref,
@@ -177,16 +178,16 @@ macro_rules! panic_safe_exec_keep_diagnostics {
                 #[allow(unused_variables)]
                 let trace = trace_outcome(&sql_return);
                 if handle.is_null() {
-                    crate::trace_odbc_error!(trace, fct_name);
+                    $crate::trace_odbc_error!(trace, fct_name);
                 } else {
-                    crate::trace_odbc_error!(handle_ref, trace, fct_name);
+                    $crate::trace_odbc_error!(handle_ref, trace, fct_name);
                 }
                 return sql_return;
             }
         };
     }};
 }
-pub(crate) use panic_safe_exec_keep_diagnostics;
+// pub(crate) use panic_safe_exec_keep_diagnostics;
 use shared_sql_utils::driver_settings::DriverSettings;
 
 ///
@@ -950,7 +951,7 @@ pub unsafe extern "C" fn SQLDescribeColW(
             let odbc_version = stmt_handle.get_odbc_version();
             {
                 let stmt = must_be_valid!(stmt_handle.as_statement());
-                let mongo_stmt = stmt.mongo_statement.write().unwrap();
+                let mongo_stmt = stmt.mongo_statement.read().unwrap();
                 if mongo_stmt.is_none() {
                     stmt.errors.write().unwrap().push(ODBCError::NoResultSet);
                     return SqlReturn::ERROR;

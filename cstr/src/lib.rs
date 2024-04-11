@@ -1,6 +1,7 @@
-use num_derive::FromPrimitive;
 use std::os::raw::c_void;
 use std::ptr::copy_nonoverlapping;
+
+use num_derive::FromPrimitive;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum Charset {

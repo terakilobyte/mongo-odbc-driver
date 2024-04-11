@@ -1315,7 +1315,6 @@ pub unsafe fn ptr_safe_write<T>(ptr: *mut T, data: T) {
 mod unit {
     use super::*;
     use bson::bson;
-    use chrono::offset::TimeZone;
     #[test]
     fn date_format() {
         assert_eq!(

@@ -1,4 +1,3 @@
-use open;
 use openidconnect::{
     core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
     reqwest::async_http_client,

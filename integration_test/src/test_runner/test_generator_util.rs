@@ -5,7 +5,6 @@ use definitions::{CDataType, Desc, HStmt, SqlDataType, USmallInt};
 use lazy_static::lazy_static;
 use num_traits::FromPrimitive;
 use serde_json::{Number, Value};
-use std::string::ToString;
 
 const GENERATED_TEST_DIR: &str = "./resources/generated_test";
 

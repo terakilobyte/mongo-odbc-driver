@@ -1,6 +1,4 @@
-use actix_web::{
-    self, dev::ServerHandle, http, web, App, HttpRequest, HttpResponse, HttpServer, Result,
-};
+use actix_web::{dev::ServerHandle, http, web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use askama::Template;
 use std::collections::HashMap;
 use std::result::Result as StdResult;
