@@ -30,6 +30,7 @@ mod integration {
     ///     - SQLFreeHandle(SQL_HANDLE_DBC)
     ///     - SQLFreeHandle(SQL_HANDLE_ENV)
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_free_stmt() {
         let (env_handle, conn_handle, stmt_handle) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);
@@ -68,6 +69,7 @@ mod integration {
     ///         - SQLGetData
     ///     - SQLCancel
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_cancel_noop() {
         let (_, _, stmt_handle) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);

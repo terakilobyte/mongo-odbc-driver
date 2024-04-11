@@ -29,11 +29,17 @@ mod unit {
     #[test]
     fn test_binding_and_rebinding_column() {
         // Set up MongoHandle
-        let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
-        let conn =
-            &mut MongoHandle::Connection(Connection::with_state(env, ConnectionState::Allocated));
-        let stmt: *mut _ =
-            &mut MongoHandle::Statement(Statement::with_state(conn, StatementState::Allocated));
+        let env = Box::into_raw(Box::from(MongoHandle::Env(Env::with_state(
+            EnvState::Allocated,
+        ))));
+        let conn = Box::into_raw(Box::from(MongoHandle::Connection(Connection::with_state(
+            env,
+            ConnectionState::Allocated,
+        ))));
+        let stmt = Box::into_raw(Box::from(MongoHandle::Statement(Statement::with_state(
+            conn,
+            StatementState::Allocated,
+        ))));
 
         unsafe {
             // Get Statement

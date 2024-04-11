@@ -192,12 +192,14 @@ mod integration {
 
     /// Test PowerBI Setup flow
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_setup() {
         setup();
     }
 
     /// Test PowerBi environment clean-up
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_env_cleanup() {
         // We need a handle to be able to test that freeing the handle work
         let env_handle: HEnv = setup();
@@ -222,6 +224,7 @@ mod integration {
     /// - SQLGetInfoW(SQL_DBMS_NAME)
     /// - SQLGetInfoW(SQL_DBMS_VER)
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_connection() {
         let env_handle: HEnv = setup();
         let (conn_handle, in_connection_string, out_connection_string, output_len) =
@@ -268,6 +271,7 @@ mod integration {
     // Test PowerBI driver information retrieval
     // This test is limited by the available InfoType values in definitions
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_get_driver_info() {
         let env_handle: HEnv = setup();
         let (conn_handle, _, _, _) = power_bi_connect(env_handle);
@@ -401,6 +405,7 @@ mod integration {
     ///     - SQLMoreResults()
     ///     - SQLFreeHandle(SQL_HANDLE_STMT)
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_data_retrieval() {
         let env_handle: HEnv = setup();
         let (conn_handle, _, _, _) = power_bi_connect(env_handle);
@@ -498,6 +503,7 @@ mod integration {
     ///  - SQLMoreResults()
     ///  -SQLFreeHandle(SQL_HANDLE_STMT)
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_table_listing() {
         let env_handle: HEnv = setup();
         let (conn_handle, _, _, _) = power_bi_connect(env_handle);

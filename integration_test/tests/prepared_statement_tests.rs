@@ -13,6 +13,7 @@ mod integration {
     use cstr::WideChar;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_error_execute_before_prepare() {
         let (env_handle, dbc, stmt) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);
@@ -33,6 +34,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_prepare_get_resultset_metadata() {
         let (env_handle, dbc, stmt) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);
@@ -58,6 +60,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_error_fetch_before_execute() {
         let (env_handle, dbc, stmt) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);
@@ -86,6 +89,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_prepare_execute_retrieve_data() {
         let (env_handle, dbc, stmt) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);
@@ -132,6 +136,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_prepare_execute_multiple_times() {
         let (env_handle, dbc, stmt) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC3);

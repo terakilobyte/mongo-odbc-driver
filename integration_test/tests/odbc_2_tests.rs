@@ -15,12 +15,14 @@ mod integration {
 
     /// Test Setup flow
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_setup() {
         allocate_env(AttrOdbcVersion::SQL_OV_ODBC2);
     }
 
     /// Test list_tables, which should yield all tables
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_list_tables() {
         let (env_handle, conn_handle, stmt_handle) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC2);
@@ -88,6 +90,7 @@ mod integration {
     /// we should get both date types back. For date, we should get the specific date type
     /// we expect back.
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_type_listing() {
         let (env_handle, conn_handle, stmt_handle) =
             default_setup_connect_and_alloc_stmt(AttrOdbcVersion::SQL_OV_ODBC2);

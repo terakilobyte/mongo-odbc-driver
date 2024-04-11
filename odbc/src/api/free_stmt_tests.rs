@@ -18,30 +18,45 @@ mod unit {
     };
     use std::ptr::null_mut;
 
-    fn create_stmt_handle() -> *mut MongoHandle {
-        let env = &mut MongoHandle::Env(Env::with_state(EnvState::Allocated));
-        let conn =
-            &mut MongoHandle::Connection(Connection::with_state(env, ConnectionState::Allocated));
-        let stmt: *mut _ =
-            &mut MongoHandle::Statement(Statement::with_state(conn, StatementState::Allocated));
+    fn create_handles() -> (*mut MongoHandle, *mut MongoHandle, *mut MongoHandle) {
+        let env = Box::into_raw(Box::from(MongoHandle::Env(Env::with_state(
+            EnvState::Allocated,
+        ))));
+        let conn = Box::into_raw(Box::from(MongoHandle::Connection(Connection::with_state(
+            env,
+            ConnectionState::Allocated,
+        ))));
+        let stmt = Box::into_raw(Box::from(MongoHandle::Statement(Statement::with_state(
+            conn,
+            StatementState::Allocated,
+        ))));
+        (env, conn, stmt)
+    }
 
-        stmt
+    unsafe fn cleanup(env: *mut MongoHandle, conn: *mut MongoHandle, stmt: *mut MongoHandle) {
+        let _ = Box::from_raw(stmt);
+        let _ = Box::from_raw(conn);
+        let _ = Box::from_raw(env);
     }
 
     #[test]
     fn test_free_stmt_invalid() {
-        let stmt = create_stmt_handle();
-        unsafe { assert_eq!(SqlReturn::ERROR, SQLFreeStmt(stmt as *mut _, 1)) }
+        let (env, conn, stmt) = create_handles();
+        unsafe {
+            assert_eq!(SqlReturn::ERROR, SQLFreeStmt(stmt as *mut _, 1));
+            cleanup(env, conn, stmt);
+        }
     }
 
     #[test]
     fn test_free_stmt_reset_params() {
-        let stmt = create_stmt_handle();
+        let (env, conn, stmt) = create_handles();
         unsafe {
             assert_eq!(
                 SqlReturn::SUCCESS,
                 SQLFreeStmt(stmt as *mut _, FreeStmtOption::SQL_RESET_PARAMS as i16)
-            )
+            );
+            cleanup(env, conn, stmt);
         }
     }
 

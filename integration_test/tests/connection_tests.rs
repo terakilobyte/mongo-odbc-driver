@@ -16,6 +16,7 @@ mod integration {
     use std::{fs, str, thread, time};
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_invalid_connection() {
         let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
         // Missing PWD
@@ -30,6 +31,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_default_connection() {
         let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
         let conn_str = crate::common::generate_default_connection_str();
@@ -38,6 +40,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn uuid_csharp_legacy() {
         let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
         let conn_str = crate::common::generate_uri_with_default_connection_string(
@@ -48,6 +51,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn uuid_java_legacy() {
         let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
         let conn_str = crate::common::generate_uri_with_default_connection_string(
@@ -58,6 +62,7 @@ mod integration {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn uuid_python_legacy() {
         let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
         let conn_str = crate::common::generate_uri_with_default_connection_string(
@@ -75,6 +80,7 @@ mod integration {
         use definitions::AttrOdbcVersion;
 
         #[test]
+        #[cfg_attr(miri, ignore)]
         fn test_valid_dsn_connection() {
             let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
             let conn_str = "DSN=ADF_Test";
@@ -83,6 +89,7 @@ mod integration {
         }
 
         #[test]
+        #[cfg_attr(miri, ignore)]
         fn test_uri_opts_override_dsn() {
             let env_handle = allocate_env(AttrOdbcVersion::SQL_OV_ODBC3);
             let conn_str = "PWD=wrong;DSN=ADF_Test";
@@ -108,6 +115,7 @@ mod integration {
     // At connection time, when the connection string is processed, if there is a log level specified
     // the logger log level is updated to the connection log level.
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_driver_log_level() {
         let driver_settings: DriverSettings =
             DriverSettings::from_private_profile_string().unwrap_or_default();

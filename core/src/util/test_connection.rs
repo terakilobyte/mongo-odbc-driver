@@ -72,6 +72,7 @@ mod test {
     use std::env;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn successful_connection() {
         let mut buffer = [0; 1024];
         let mut buffer_len = 0;
@@ -87,6 +88,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn bad_credentials() {
         let mut buffer = [0; 1024];
         let mut buffer_len = 0;
@@ -109,6 +111,7 @@ mod test {
 
     #[test]
     #[cfg(feature = "bad_host")]
+    #[cfg_attr(miri, ignore)]
     fn bad_host() {
         let mut buffer = [0; 1024];
         let mut buffer_len = 0;

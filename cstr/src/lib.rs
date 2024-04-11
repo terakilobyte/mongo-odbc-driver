@@ -398,9 +398,10 @@ mod test {
     fn test_write_fixed_data() {
         let expected = 42i32;
         let input = &42i32;
-        let output_ptr: *mut c_void = Box::into_raw(Box::new([0i32; 1])) as *mut _;
-        unsafe { write_fixed_data(input, output_ptr) };
+        let output_ptr = &mut [0i32, 1] as *mut i32 as *mut c_void;
+        // let output_ptr: *mut c_void = Box::into_raw(Box::new([0i32; 1])) as *mut _;
         unsafe {
+            write_fixed_data(input, output_ptr);
             assert_eq!(expected, *(output_ptr as *mut i32));
         }
     }

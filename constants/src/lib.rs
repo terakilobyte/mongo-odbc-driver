@@ -486,6 +486,7 @@ mod version {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ensure_version_sync() {
         let members = get_member_versions();
         if members.is_empty() {

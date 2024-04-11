@@ -181,6 +181,7 @@ mod driver {
     use log::{debug, error, info};
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn logger() {
         let log_dir = Logger::get_log_dir("".to_string());
         let tmp_log = log_dir.join("mongo_odbc.log");

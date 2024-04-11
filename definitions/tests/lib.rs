@@ -4,6 +4,7 @@ use definitions::*;
 use std::ptr::null_mut;
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn allocate_environment() {
     let mut env: Handle = null_mut();
     unsafe {
@@ -23,6 +24,7 @@ fn allocate_environment() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn allocate_connection() {
     let mut env: Handle = null_mut();
     let mut conn: Handle = null_mut();
@@ -68,6 +70,7 @@ fn allocate_connection() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn allocate_connection_error() {
     let mut env: Handle = null_mut();
     let mut conn: Handle = null_mut();
